@@ -1,5 +1,5 @@
 """
-Tests para IdentityAligner, AdaBNAligner, OTAligner y SelectiveAligner.
+Tests para IdentityAligner, AdaBNAligner, OTAligner, SelectiveAligner y WOEEncoder.
 """
 
 from __future__ import annotations
@@ -170,3 +170,86 @@ class TestOTAligner:
             f"W1 reduction insufficient: {w1_before:.4f} → {w1_after:.4f} "
             f"(ratio={w1_after / w1_before:.2f}, expected <0.50)"
         )
+
+
+# ── WOEEncoder ────────────────────────────────────────────────────────────────
+
+
+class TestWOEEncoder:
+    """Tests del WOEEncoder con foco en suavizado Laplace y estabilidad numérica."""
+
+    def _make_data(self, n: int = 200, p: int = 3, seed: int = 0):
+        rng = np.random.default_rng(seed)
+        X = rng.standard_normal((n, p))
+        y = (rng.standard_normal(n) > 0).astype(int)
+        return X, y
+
+    def test_zero_event_bins_no_infinite_woe(self):
+        """Bins con 0 eventos (positivos o negativos) no producen WoE infinito."""
+        from domain_transfer.select.woe_encoder import WOEEncoder
+
+        rng = np.random.default_rng(7)
+        # Create a feature whose values for positive class are all in the
+        # upper tail, leaving some bins with 0 positive events.
+        n = 100
+        y = np.zeros(n, dtype=int)
+        y[:5] = 1  # only 5 positive events out of 100
+        # Feature: positives in [5, 6], negatives in [-3, 3]
+        x = rng.standard_normal(n)
+        x[y == 1] = rng.uniform(5, 6, size=5)
+        X = x.reshape(-1, 1)
+
+        enc = WOEEncoder(n_bins=10, smoothing=0.5)
+        enc.fit_supervised(X, X, y)
+
+        # All WoE values must be finite
+        for woe_vals in enc._woe_values:
+            assert np.all(np.isfinite(woe_vals)), (
+                f"Non-finite WoE values found: {woe_vals}"
+            )
+
+    def test_zero_negative_bins_no_infinite_woe(self):
+        """Bins con 0 negativos tampoco producen WoE infinito."""
+        from domain_transfer.select.woe_encoder import WOEEncoder
+
+        rng = np.random.default_rng(13)
+        n = 100
+        y = np.ones(n, dtype=int)
+        y[:5] = 0  # only 5 negatives
+        x = rng.standard_normal(n)
+        X = x.reshape(-1, 1)
+
+        enc = WOEEncoder(n_bins=10, smoothing=0.5)
+        enc.fit_supervised(X, X, y)
+
+        for woe_vals in enc._woe_values:
+            assert np.all(np.isfinite(woe_vals)), (
+                f"Non-finite WoE values found: {woe_vals}"
+            )
+
+    def test_transform_output_finite(self):
+        """transform() devuelve valores finitos para todos los bins."""
+        from domain_transfer.select.woe_encoder import WOEEncoder
+
+        X, y = self._make_data()
+        enc = WOEEncoder(n_bins=10, smoothing=0.5)
+        enc.fit_supervised(X, X, y)
+        X_woe = enc.transform(X)
+        assert np.all(np.isfinite(X_woe)), "transform() returned non-finite values."
+
+    def test_smoothing_zero_raises(self):
+        """smoothing <= 0 debe lanzar ValueError en construcción."""
+        from domain_transfer.select.woe_encoder import WOEEncoder
+
+        with pytest.raises(ValueError, match="smoothing"):
+            WOEEncoder(smoothing=0.0)
+
+    def test_output_shape(self):
+        """transform() preserva el shape."""
+        from domain_transfer.select.woe_encoder import WOEEncoder
+
+        X, y = self._make_data(n=150, p=4)
+        enc = WOEEncoder(n_bins=8, smoothing=0.5)
+        enc.fit_supervised(X, X, y)
+        assert enc.transform(X).shape == X.shape
+

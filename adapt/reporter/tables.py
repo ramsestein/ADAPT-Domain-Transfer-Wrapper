@@ -179,6 +179,9 @@ def make_eval_table(
     n_target: Optional[int] = None,
     n_events: Optional[int] = None,
     auroc_source: Optional[float] = None,
+    auroc_ci_source: Optional[tuple] = None,
+    slope_source: Optional[float] = None,
+    ece_source: Optional[float] = None,
 ) -> str:
     """Markdown table comparing metrics before/after the pipeline (with source as reference)."""
 
@@ -192,9 +195,9 @@ def make_eval_table(
         ("n events", "—", f"{n_events}" if n_events else "—", "—", "—"),
         ("AUROC", _fmt(auroc_source, ".4f"), _fmt(auroc_before, ".4f"),
          _fmt(auroc_after, ".4f"), "higher is better"),
-        ("AUROC 95% CI", "—", ci_str(auroc_ci_before), ci_str(auroc_ci_after), "Bootstrap 500"),
-        ("Calibration slope", "—", _fmt(slope_before, ".2f"), _fmt(slope_after, ".2f"), "Ideal = 1.0"),
-        ("ECE", "—", _fmt(ece_before, ".4f"), _fmt(ece_after, ".4f"), "lower is better"),
+        ("AUROC 95% CI", ci_str(auroc_ci_source), ci_str(auroc_ci_before), ci_str(auroc_ci_after), "Bootstrap 500"),
+        ("Calibration slope", _fmt(slope_source, ".2f"), _fmt(slope_before, ".2f"), _fmt(slope_after, ".2f"), "Ideal = 1.0"),
+        ("ECE", _fmt(ece_source, ".4f"), _fmt(ece_before, ".4f"), _fmt(ece_after, ".4f"), "lower is better"),
     ]
 
     header = (

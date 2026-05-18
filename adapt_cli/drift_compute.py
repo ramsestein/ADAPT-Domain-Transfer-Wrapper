@@ -182,7 +182,7 @@ def compute_drift_decomposition(
     if cache_path is not None:
         cache_path = Path(cache_path)
         if cache_path.exists():
-            logger.info("Drift decomposition: cargando cache %s", cache_path)
+            logger.info("Drift decomposition: loading cache %s", cache_path)
             df = pd.read_csv(cache_path)
             return _df_to_dicts(df)
 
@@ -430,7 +430,7 @@ def compute_drift_decomposition(
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(cache_path, index=False)
-        logger.info("Drift decomposition: cache guardado en %s", cache_path)
+        logger.info("Drift decomposition: cache saved to %s", cache_path)
 
     return _df_to_dicts(df)
 

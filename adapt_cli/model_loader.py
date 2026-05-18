@@ -54,7 +54,7 @@ class _SklearnLikeWrapper:
 
 
 class _XGBoostJSONWrapper:
-    """Wrapper para XGBoost cargado desde JSON/UBJ/BIN."""
+    """Wrapper for XGBoost loaded from JSON/UBJ/BIN."""
 
     def __init__(self, booster, n_features: int):
         self._booster = booster
@@ -151,17 +151,17 @@ def _load_xgboost(path: Path, schema: Optional[list[str]] = None) -> PredictProb
             from domain_transfer.model.xgboost_wrapper import XGBoostWrapper
             wrapper = XGBoostWrapper(schema=schema, model_path=path)
             wrapper.n_features_in_ = len(schema)
-            logger.info("XGBoost cargado de %s vía XGBoostWrapper (n_features=%d)",
+            logger.info("XGBoost loaded from %s via XGBoostWrapper (n_features=%d)",
                         path.name, len(schema))
             return wrapper
         except Exception as e:
-            logger.warning("XGBoostWrapper no disponible (%s); usando wrapper minimal", e)
+            logger.warning("XGBoostWrapper not available (%s); using minimal wrapper", e)
 
     import xgboost as xgb
     booster = xgb.Booster()
     booster.load_model(str(path))
     n_features = int(booster.num_features())
-    logger.info("XGBoost cargado de %s (wrapper minimal, n_features=%d)",
+    logger.info("XGBoost loaded from %s (minimal wrapper, n_features=%d)",
                 path.name, n_features)
     return _XGBoostJSONWrapper(booster, n_features)
 
@@ -170,11 +170,11 @@ def _load_joblib(path: Path) -> PredictProbaModel:
     import joblib
     obj = joblib.load(path)
     if hasattr(obj, "predict_proba"):
-        logger.info("Modelo sklearn-like cargado de %s", path.name)
+        logger.info("sklearn-compatible model loaded from %s", path.name)
         return _SklearnLikeWrapper(obj)
     raise TypeError(
-        f"Objeto en {path} no tiene .predict_proba(). "
-        "Usa --model-loader para BYOM."
+        f"Object at {path} has no .predict_proba(). "
+        "Use --model-loader for BYOM."
     )
 
 
@@ -185,7 +185,7 @@ def _load_keras(path: Path) -> PredictProbaModel:
     except ImportError:
         from tensorflow import keras  # type: ignore
         model = keras.models.load_model(str(path))
-    logger.info("Modelo Keras cargado de %s", path.name)
+    logger.info("Keras model loaded from %s", path.name)
     return _KerasWrapper(model)
 
 
@@ -307,8 +307,8 @@ def load_model(
     loader = _DISPATCH.get(ext)
     if loader is None:
         raise ValueError(
-            f"Extensión '{ext}' no reconocida. Formatos nativos: "
-            f"{sorted(_DISPATCH.keys())}. Usa custom_loader= para BYOM."
+            f"Unrecognised extension '{ext}'. Supported native formats: "
+            f"{sorted(_DISPATCH.keys())}. Use custom_loader= for BYOM."
         )
     if loader is _load_xgboost:
         return loader(path, schema=schema)

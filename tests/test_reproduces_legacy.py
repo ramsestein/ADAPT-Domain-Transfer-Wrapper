@@ -105,7 +105,7 @@ def test_auroc_pca_coral_k5():
     from domain_transfer.align.pca_coral import PCACoralAligner
 
     pair, model = _load_pipeline()
-    X_aligned = pair.align(PCACoralAligner(k=5))
+    X_aligned = pair.align(PCACoralAligner(k=5, shrinkage=None))  # legacy: no LW shrinkage
     proba = model.predict_proba(X_aligned)
     auroc = roc_auc_score(pair.y_t, proba)
     assert abs(auroc - REF_AUROC_PCA_CORAL_K5) <= ATOL, (

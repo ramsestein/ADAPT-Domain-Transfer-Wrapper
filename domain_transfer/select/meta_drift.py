@@ -118,7 +118,7 @@ def compute_drift_features(
     """
     n_s, p = X_s.shape
     n_t = X_t.shape[0]
-    assert X_t.shape[1] == p, "X_s y X_t deben tener el mismo número de features."
+    assert X_t.shape[1] == p, "X_s and X_t must have the same number of features."
 
     if shap_importance_s is None:
         shap_importance_s = np.zeros(p)
@@ -461,7 +461,7 @@ class MetaDriftPredictor:
         """
         if self.regressor_ is None:
             raise RuntimeError(
-                "MetaDriftPredictor no está ajustado.  Llama a fit() primero."
+                "MetaDriftPredictor is not fitted.  Call fit() first."
             )
         df_features = compute_drift_features(
             X_s, X_t,

@@ -174,14 +174,14 @@ class UnivariateConceptShiftDiagnoser:
         n_sig = df["significant_BH"].sum()
         n_flip = (df["flip_of_sign"] == True).sum()  # noqa: E712
         logger.info(
-            "UnivariateConceptShift: %d/%d features q<%.2f tras BH. "
+            "UnivariateConceptShift: %d/%d features q<%.2f after BH. "
             "%d flip-of-sign.",
             n_sig, p, self.alpha, n_flip,
         )
         if n_sig == 0:
             logger.warning(
-                "Ninguna feature alcanza q<%.2f tras BH. "
-                "Potencia estadística limitada por n_events_target=%d.",
+                "No feature reaches q<%.2f after BH. "
+                "Statistical power limited by n_events_target=%d.",
                 self.alpha, int(y_t.sum()),
             )
 
@@ -347,7 +347,7 @@ class UnivariateConceptShiftDiagnoser:
     def summary(self) -> str:
         """Resumen en texto del diagnóstico."""
         if self.results_ is None:
-            return "No ajustado aún."
+            return "Not yet fitted."
         df = self.results_
         n_total = len(df)
         n_ok = (df["status"] == "ok").sum()
@@ -355,12 +355,12 @@ class UnivariateConceptShiftDiagnoser:
         n_flip = (df["flip_of_sign"] == True).sum()  # noqa: E712
         n_events_t = df["n_target_obs"].sum()  # aproximado
         lines = [
-            f"UnivariateConceptShiftDiagnoser — resumen",
-            f"  Features analizadas:       {n_ok}/{n_total} (status='ok')",
-            f"  Features q<{self.alpha} (BH):     {n_sig} de {n_ok}",
+            f"UnivariateConceptShiftDiagnoser — summary",
+            f"  Features analysed:         {n_ok}/{n_total} (status='ok')",
+            f"  Features q<{self.alpha} (BH):     {n_sig} of {n_ok}",
             f"  Features flip-of-sign:     {n_flip}",
-            f"  Nota: potencia estadística limitada por n_events_target ≈ "
-            f"{int(df['n_target_obs'].max())} obs target (muchas features "
-            f"con datos limitados en Clínic).",
+            f"  Note: statistical power limited by n_events_target ≈ "
+            f"{int(df['n_target_obs'].max())} target obs (many features "
+            f"with limited data in Clínic).",
         ]
         return "\n".join(lines)

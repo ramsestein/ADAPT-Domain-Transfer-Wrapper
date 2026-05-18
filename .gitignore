@@ -34,7 +34,7 @@ htmlcov/
 Thumbs.db
 
 # ─── ADAPT runtime artefacts ─────────────────────────────────────────────────
-outputs/adapted_models/
+outputs/
 
 
 # Datasets and models the user drops in

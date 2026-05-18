@@ -81,7 +81,7 @@ def _compute_lbase_scores(
             lr.fit(X_std, y_source)
             lbase = np.abs(lr.coef_[0])
         except Exception as e:
-            logger.warning("Error en LASSO logístico para lbase: %s", e)
+            logger.warning("Error in LASSO logistic regression for lbase: %s", e)
             # Fallback: varianza explicada univariada
             for j in range(p):
                 lbase[j] = abs(np.corrcoef(X_std[:, j], y_source)[0, 1])
@@ -105,7 +105,7 @@ def _compute_shap_importance(
         shap_vals = model.shap_values(X_imp)
         return np.abs(shap_vals).mean(axis=0)
     except Exception as e:
-        logger.warning("shap_values() no disponible (%s). Usando feature_importance().", e)
+        logger.warning("shap_values() not available (%s). Using feature_importance().", e)
         fi = model.feature_importance()
         p = X_source.shape[1]
         shap = np.zeros(p)
@@ -215,7 +215,7 @@ def profile_features(
         lbase_mean = float(np.nanmean(lbase))
         lbase = np.where(np.isnan(lbase), lbase_mean, lbase)
     else:
-        logger.info("  Calculando L_base con LASSO logístico...")
+        logger.info("  Computing L_base with LASSO logistic regression...")
         lbase = _compute_lbase_scores(X_source, y_source, schema)
 
     # ── 2. SHAP importance ────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ def profile_features(
             [shap_importance_dict.get(f, 0.0) for f in schema], dtype=float
         )
     else:
-        logger.info("  Calculando SHAP importance...")
+        logger.info("  Computing SHAP importance...")
         shap = _compute_shap_importance(model, X_source)
 
     # ── 3. Combined score ─────────────────────────────────────────────────────
@@ -242,7 +242,7 @@ def profile_features(
     )
 
     # ── 6. Concept shift univariado ───────────────────────────────────────────
-    logger.info("  Calculando concept shift univariado...")
+    logger.info("  Computing univariate concept shift...")
     diagnoser = UnivariateConceptShiftDiagnoser(
         alpha=0.05, max_iter=1000, min_target_nonnan=5
     )
@@ -304,5 +304,5 @@ def profile_features(
         )
         features.append(fp)
 
-    logger.info("  Feature profiling completado (%d features).", p)
+    logger.info("  Feature profiling complete (%d features).", p)
     return features

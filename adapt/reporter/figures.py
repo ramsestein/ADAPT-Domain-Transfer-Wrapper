@@ -95,9 +95,9 @@ def figure_quadrant_map(profile: DriftProfile, figsize=(9, 7)) -> plt.Figure:
         ax.text(x, y, label, ha=ha, va=va, fontsize=8,
                 color=_QUADRANT_COLORS.get(label, "gray"), alpha=0.7)
 
-    ax.set_xlabel("L_base (LASSO logístico en source)", fontsize=10)
-    ax.set_ylabel("SHAP importance (modelo source)", fontsize=10)
-    ax.set_title("ADAPT: Mapa de cuadrantes de features", fontsize=12)
+    ax.set_xlabel("L_base (LASSO logistic regression on source)", fontsize=10)
+    ax.set_ylabel("SHAP importance (source model)", fontsize=10)
+    ax.set_title("ADAPT: Feature quadrant map", fontsize=12)
     ax.legend(title="Drift type", fontsize=7, title_fontsize=8,
               bbox_to_anchor=(1.01, 1), loc="upper left")
     fig.tight_layout()
@@ -143,14 +143,14 @@ def figure_calibration_curve(
         for xp, yp, c in zip(mean_pred, frac_pos, counts):
             ax.scatter(xp, yp, s=c * 0.5, color=color, alpha=0.25, zorder=2)
 
-    _plot_calibration(ax, y_true, scores_before, "Antes (raw)", "#F44336", "o")
+    _plot_calibration(ax, y_true, scores_before, "Before (raw)", "#F44336", "o")
     if scores_after is not None:
-        _plot_calibration(ax, y_true, scores_after, "Después (ADAPT)", "#2196F3", "^")
+        _plot_calibration(ax, y_true, scores_after, "After (ADAPT)", "#2196F3", "^")
 
-    ax.plot([0, 1], [0, 1], "k--", linewidth=0.8, alpha=0.6, label="Calibración perfecta")
-    ax.set_xlabel("Probabilidad predicha (media del bin)", fontsize=10)
-    ax.set_ylabel("Fracción de positivos observados", fontsize=10)
-    ax.set_title("Reliability Diagram (calibración)", fontsize=12)
+    ax.plot([0, 1], [0, 1], "k--", linewidth=0.8, alpha=0.6, label="Perfect calibration")
+    ax.set_xlabel("Predicted probability (bin mean)", fontsize=10)
+    ax.set_ylabel("Fraction of observed positives", fontsize=10)
+    ax.set_title("Reliability Diagram (calibration)", fontsize=12)
     ax.legend(fontsize=9)
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(-0.02, 1.02)
@@ -180,7 +180,7 @@ def figure_combined_score_bar(
     ax.set_yticks(y_pos)
     ax.set_yticklabels(names, fontsize=8)
     ax.set_xlabel("Combined Score (L_base + SHAP norm.)", fontsize=10)
-    ax.set_title(f"Top-{n_top} features por combined score (candidatas a máscara)", fontsize=11)
+    ax.set_title(f"Top-{n_top} features by combined score (mask candidates)", fontsize=11)
 
     # Leyenda de cuadrantes
     patches = [
@@ -216,12 +216,12 @@ def figure_missing_rates(
     ax.bar(x + width / 2, miss_t, width, label="Target (Clínic)", color="#F44336", alpha=0.8)
 
     ax.axhline(0.5, color="gray", linestyle="--", linewidth=0.8,
-               label="Umbral filtro (50%)")
+               label="Filter threshold (50%)")
 
     ax.set_xticks(x)
     ax.set_xticklabels(names, rotation=45, ha="right", fontsize=8)
-    ax.set_ylabel("Missing rate (fracción)", fontsize=10)
-    ax.set_title(f"Top-{n_top} features por missing rate en target", fontsize=11)
+    ax.set_ylabel("Missing rate (fraction)", fontsize=10)
+    ax.set_title(f"Top-{n_top} features by missing rate in target", fontsize=11)
     ax.legend(fontsize=9)
     ax.set_ylim(0, 1.05)
     fig.tight_layout()

@@ -31,6 +31,7 @@ domain adaptation. ECCV Workshops. https://arxiv.org/abs/1612.01939
 from __future__ import annotations
 
 import logging
+from typing import Union
 
 import numpy as np
 
@@ -49,13 +50,86 @@ class CoralAligner(Aligner):
         Regularisation added to the diagonal of both covariance matrices
         before inversion.  Prevents numerical singularity.
         Default: 1e-4 (matches legacy ``w_alignment_eval.py``).
+    shrinkage : str, float, or None
+        Shrinkage estimator for the target covariance matrix.
+
+        - ``"auto"`` : use :class:`sklearn.covariance.LedoitWolf` to
+          estimate the optimal shrinkage coefficient automatically.
+          Recommended when ``n_target`` is small.
+        - ``float ∈ [0, 1]`` : apply manual shrinkage
+          ``Σ̂ = (1 − α) · S + α · μ_trace · I``, where ``S`` is the sample
+          covariance, ``μ_trace = trace(S) / p``, and ``α`` is the given
+          coefficient.
+        - ``None`` or ``0`` : no shrinkage (legacy behaviour).
+
+        The estimated Ledoit-Wolf coefficient is stored in
+        ``lw_coef_source_`` and ``lw_coef_target_`` after fitting.
+        Default: ``"auto"``.
     """
 
-    def __init__(self, reg: float = 1e-4) -> None:
+    def __init__(
+        self,
+        reg: float = 1e-4,
+        shrinkage: Union[str, float, None] = "auto",
+    ) -> None:
         self.reg = reg
+        self.shrinkage = shrinkage
         self._A: np.ndarray | None = None
         self._mu_s: np.ndarray | None = None
         self._mu_t: np.ndarray | None = None
+        # Reported after fit — LW shrinkage coefficients (None if not used)
+        self.lw_coef_source_: float | None = None
+        self.lw_coef_target_: float | None = None
+
+    # ── Covariance estimation ─────────────────────────────────────────────────
+
+    def _estimate_cov(
+        self, X: np.ndarray, label: str
+    ) -> tuple[np.ndarray, float | None]:
+        """
+        Estimate regularised covariance of X.
+
+        Returns
+        -------
+        cov : np.ndarray (q, q)
+        lw_coef : float or None
+            Ledoit-Wolf shrinkage coefficient when shrinkage='auto';
+            the manual alpha when shrinkage is a float; None otherwise.
+        """
+        q = X.shape[1]
+        shrinkage = self.shrinkage
+
+        if shrinkage == "auto":
+            from sklearn.covariance import LedoitWolf
+            lw = LedoitWolf()
+            lw.fit(X)
+            cov = lw.covariance_ + self.reg * np.eye(q)
+            lw_coef = float(lw.shrinkage_)
+            logger.info(
+                "CoralAligner [%s]: LedoitWolf shrinkage=%.4f (n=%d, p=%d).",
+                label, lw_coef, X.shape[0], q,
+            )
+            return cov, lw_coef
+
+        S = np.cov(X, rowvar=False)
+        if isinstance(shrinkage, (int, float)) and shrinkage not in (None, 0, 0.0):
+            alpha = float(shrinkage)
+            if not (0.0 <= alpha <= 1.0):
+                raise ValueError(
+                    f"shrinkage must be in [0, 1] or 'auto' or None; got {alpha}."
+                )
+            mu = float(np.trace(S)) / q
+            cov = (1.0 - alpha) * S + alpha * mu * np.eye(q)
+            cov += self.reg * np.eye(q)
+            logger.info(
+                "CoralAligner [%s]: manual shrinkage alpha=%.4f applied.",
+                label, alpha,
+            )
+            return cov, alpha
+
+        # None / 0 → legacy behaviour
+        cov = S + self.reg * np.eye(q)
+        return cov, None
 
     def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> "CoralAligner":
         """
@@ -81,8 +155,8 @@ class CoralAligner(Aligner):
         self._mu_s = X_source.mean(axis=0)
         self._mu_t = X_target.mean(axis=0)
 
-        Sig_s = np.cov(X_source, rowvar=False) + self.reg * np.eye(q)
-        Sig_t = np.cov(X_target, rowvar=False) + self.reg * np.eye(q)
+        Sig_s, self.lw_coef_source_ = self._estimate_cov(X_source, "source")
+        Sig_t, self.lw_coef_target_ = self._estimate_cov(X_target, "target")
         self._A = safe_sqrtm(Sig_s) @ safe_invsqrtm(Sig_t)
 
         return self

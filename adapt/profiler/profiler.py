@@ -94,7 +94,7 @@ class Profiler:
         )
 
         # ── Globales ──────────────────────────────────────────────────────────
-        logger.info("Calculando métricas globales...")
+        logger.info("Computing global metrics...")
         globals_dict = profile_global(
             X_source, y_source, X_target, y_target, model
         )
@@ -114,7 +114,7 @@ class Profiler:
         )
 
         logger.info(
-            "Profiling completado. AUROC baseline=%.4f [%.4f, %.4f]. "
+            "Profiling complete. AUROC baseline=%.4f [%.4f, %.4f]. "
             "Slope=%.2f. MMD²=%.4f (p=%.3f).",
             profile.baseline_auroc,
             profile.baseline_auroc_ci_low,

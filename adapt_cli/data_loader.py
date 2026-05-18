@@ -88,7 +88,7 @@ class GenericCohortLoader(CohortLoader):
 
         if missing:
             logger.warning(
-                "[%s] %d/%d features ausentes (rellenadas con NaN): %s%s",
+                "[%s] %d/%d features missing (filled with NaN): %s%s",
                 self.path.name, len(missing), len(self._schema),
                 missing[:5], "..." if len(missing) > 5 else "",
             )
@@ -97,7 +97,7 @@ class GenericCohortLoader(CohortLoader):
         if self.unit_corrections:
             for feat, op in self.unit_corrections.items():
                 if feat not in out.columns:
-                    logger.warning("[unit_corrections] feature '%s' no en schema; ignorada", feat)
+                    logger.warning("[unit_corrections] feature '%s' not in schema; ignored", feat)
                     continue
                 if isinstance(op, str):
                     op_lc = op.lower()
@@ -114,21 +114,21 @@ class GenericCohortLoader(CohortLoader):
                     elif op_lc == "neg":
                         out[feat] = -out[feat]
                     else:
-                        logger.warning("[unit_corrections] op '%s' desconocida para %s", op, feat)
+                        logger.warning("[unit_corrections] op '%s' unknown for %s", op, feat)
                         continue
                 elif isinstance(op, (int, float)):
-                    # Multiplicador numérico
+                    # Numeric multiplier
                     out[feat] = out[feat] * float(op)
                 else:
-                    logger.warning("[unit_corrections] valor inválido para %s: %r", feat, op)
+                    logger.warning("[unit_corrections] invalid value for %s: %r", feat, op)
                     continue
                 logger.debug("[unit_corrections] %s ← %s", feat, op)
-            logger.info("[%s] %d unit_corrections aplicadas", self.path.name, len(self.unit_corrections))
+            logger.info("[%s] %d unit_corrections applied", self.path.name, len(self.unit_corrections))
 
-        # Sanitizar ±Inf → NaN (común en CSVs con ratios mal calculados)
+        # Sanitise ±Inf → NaN (common in CSVs with miscalculated ratios)
         n_inf = int(np.isinf(out[self._schema].values).sum())
         if n_inf:
-            logger.warning("[%s] %d valores Inf reemplazados por NaN", self.path.name, n_inf)
+            logger.warning("[%s] %d Inf values replaced with NaN", self.path.name, n_inf)
             out[self._schema] = out[self._schema].replace([np.inf, -np.inf], np.nan)
 
         # Label binaria
@@ -138,11 +138,11 @@ class GenericCohortLoader(CohortLoader):
         else:
             label = (raw == self.label_positive_value).astype("Int64")
 
-        # Drop filas con label NaN (no convertir a 0; sería sesgo)
+        # Drop rows with NaN label (do not convert to 0; that would introduce bias)
         valid_mask = label.notna()
         n_dropped = int((~valid_mask).sum())
         if n_dropped:
-            logger.warning("[%s] %d filas con label NaN descartadas", self.path.name, n_dropped)
+            logger.warning("[%s] %d rows with NaN label dropped", self.path.name, n_dropped)
             out = out.loc[valid_mask].reset_index(drop=True)
             label = label.loc[valid_mask].reset_index(drop=True)
         out["label"] = label.astype(int).clip(0, 1)
@@ -150,7 +150,7 @@ class GenericCohortLoader(CohortLoader):
         n = len(out)
         n_pos = int(out["label"].sum())
         logger.info(
-            "[%s] cargado: n=%d, eventos=%d (%.1f%%), features presentes=%d/%d",
+            "[%s] loaded: n=%d, events=%d (%.1f%%), features present=%d/%d",
             self.path.name, n, n_pos, 100 * n_pos / max(n, 1),
             len(present), len(self._schema),
         )

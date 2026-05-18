@@ -49,3 +49,18 @@ output:
   metrics_json: outputs/reports/snuh_to_clinic.metrics.json
   source_name: "SNUH"
   target_name: "Clínic"
+
+# ── Joint drift analysis ──────────────────────────────────────────────────────
+# Thresholds for VIF-based covariance structure drift detection.
+joint_drift:
+  delta_vif_warn: 2          # |ΔVIF| ≥ this → WATCH
+  delta_vif_severe: 5        # |ΔVIF| ≥ this → SEVERE
+  compute_mi_matrix: false   # true → expensive O(p²) MI matrix delta (optional)
+  severe_share_threshold: 0.20  # >20% SEVERE features → no-go recommendation
+
+# ── Regularization ────────────────────────────────────────────────────────────
+# Regularisation applied by CORAL, Platt calibration, and WOE encoder.
+regularization:
+  shrinkage: "auto"     # "auto" (LedoitWolf) | float ∈ [0,1] | null (legacy)
+  calibration_C: 1.0    # Platt L2 inverse strength; higher → less regularisation
+  woe_smoothing: 0.5    # Laplace smoothing for WOE bins; 0.5 = Jeffreys prior

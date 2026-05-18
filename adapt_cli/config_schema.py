@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import yaml
 
@@ -71,6 +71,38 @@ class OutputConfig:
 
 
 @dataclass
+class JointDriftConfig:
+    """Configuration for joint (covariance-structure) drift analysis."""
+    delta_vif_warn: float = 2.0
+    delta_vif_severe: float = 5.0
+    compute_mi_matrix: bool = False
+    severe_share_threshold: float = 0.20
+
+
+@dataclass
+class RegularizationConfig:
+    """Regularisation settings for CORAL, Platt calibration, and WOE."""
+    # "auto" | float ∈ [0,1] | None  — forwarded to CoralAligner / PCACoralAligner
+    shrinkage: Union[str, float, None] = "auto"
+    # Inverse of L2 strength for Platt calibration; forwarded to
+    # StratifiedPlattRecalibrator(C=...)
+    calibration_C: float = 1.0
+    # Laplace smoothing for WOE encoder; forwarded to WOEEncoder(smoothing=...)
+    woe_smoothing: float = 0.5
+
+
+@dataclass
+class EvalConfig:
+    """Configuración para las evaluaciones opcionales (oracle, attribution, counterfactuals)."""
+    oracle_eval: bool = True                  # Entrenar oracle con k-fold en target
+    oracle_cv: int = 5                        # Número de folds para el oracle
+    feature_attribution: bool = True          # Atribución por feature del recoverable_gap
+    feature_attribution_top_n: int = 10       # Top-N features en atribución
+    counterfactual_alternatives: int = 3      # Nº de alternativas por decisión clave
+    brier_decompose: bool = True              # Descomponer Brier score en Murphy components
+
+
+@dataclass
 class FullConfig:
     model: ModelConfig
     source: DatasetConfig
@@ -78,6 +110,9 @@ class FullConfig:
     adapt: AdaptConfig = field(default_factory=AdaptConfig)
     overfitting_check: OverfittingConfig = field(default_factory=OverfittingConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
+    joint_drift: JointDriftConfig = field(default_factory=JointDriftConfig)
+    regularization: RegularizationConfig = field(default_factory=RegularizationConfig)
+    evaluation: EvalConfig = field(default_factory=EvalConfig)
 
 
 def _build(dc_class, data: dict, name: str):
@@ -99,15 +134,15 @@ def load_config(path: str | Path) -> FullConfig:
     """Lee y valida un YAML de configuración."""
     path = Path(path)
     if not path.exists():
-        raise FileNotFoundError(f"Config no encontrado: {path}")
+        raise FileNotFoundError(f"Config not found: {path}")
 
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
-        raise ValueError(f"YAML inválido en {path} (debe ser un dict)")
+        raise ValueError(f"Invalid YAML in {path} (expected a dict)")
 
     for required in ("model", "source", "target"):
         if required not in raw:
-            raise KeyError(f"Falta sección obligatoria '{required}' en {path}")
+            raise KeyError(f"Missing required section '{required}' in {path}")
 
     return FullConfig(
         model=_build(ModelConfig, raw["model"], "model"),
@@ -116,4 +151,7 @@ def load_config(path: str | Path) -> FullConfig:
         adapt=_build(AdaptConfig, raw.get("adapt"), "adapt"),
         overfitting_check=_build(OverfittingConfig, raw.get("overfitting_check"), "overfitting_check"),
         output=_build(OutputConfig, raw.get("output"), "output"),
+        joint_drift=_build(JointDriftConfig, raw.get("joint_drift"), "joint_drift"),
+        regularization=_build(RegularizationConfig, raw.get("regularization"), "regularization"),
+        evaluation=_build(EvalConfig, raw.get("evaluation"), "evaluation"),
     )

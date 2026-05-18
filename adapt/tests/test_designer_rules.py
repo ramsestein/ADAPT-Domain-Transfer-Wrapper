@@ -107,14 +107,14 @@ class TestSelectMaskN:
     def test_returns_positive_int(self):
         from adapt.designer.rules import select_mask_n
         profile = _make_profile()
-        n, reason = select_mask_n(profile)
+        n, reason, _sweep = select_mask_n(profile)
         assert isinstance(n, int)
         assert n >= 1
 
     def test_does_not_exceed_20pct(self):
         from adapt.designer.rules import select_mask_n
         profile = _make_profile()
-        n, _ = select_mask_n(profile)
+        n, _, _sweep = select_mask_n(profile)
         max_allowed = max(1, int(0.20 * len(profile.features)))
         assert n <= max_allowed
 
@@ -122,7 +122,7 @@ class TestSelectMaskN:
         from adapt.designer.rules import select_mask_n
         profile = _make_profile()
         n_ponzonous = len(profile.ponzonous_features())
-        n, _ = select_mask_n(profile)
+        n, _, _sweep = select_mask_n(profile)
         if n_ponzonous > 0:
             assert n >= min(1, n_ponzonous)
 

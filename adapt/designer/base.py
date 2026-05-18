@@ -91,6 +91,12 @@ class AdapterConfig:
     # Justificaciones
     rationale: dict = field(default_factory=dict)
 
+    # Audit trail (DesignerAuditTrail) — poblado por selector.py
+    audit: object = field(default=None, repr=False)
+
+    # Sweep history del mask_n — lista de {n, auroc} para todos los N probados
+    mask_sweep_history: list = field(default_factory=list)
+
     def summary(self) -> str:
         """Resumen legible de la configuración."""
         lines = ["AdapterConfig:"]

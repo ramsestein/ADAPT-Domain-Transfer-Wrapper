@@ -50,9 +50,9 @@ def should_mask_features(profile: DriftProfile) -> tuple[bool, str]:
     if profile.n_target_events < N_EVENTS_MINIMUM_MASK:
         return False, (
             f"n_target_events={profile.n_target_events} < {N_EVENTS_MINIMUM_MASK}: "
-            f"insuficiente para validar máscara"
+            f"insufficient to validate mask"
         )
-    return True, f"n_target_events={profile.n_target_events} >= {N_EVENTS_MINIMUM_MASK}: máscara activada"
+    return True, f"n_target_events={profile.n_target_events} >= {N_EVENTS_MINIMUM_MASK}: mask activated"
 
 
 def select_mask_n(
@@ -61,7 +61,7 @@ def select_mask_n(
     model=None,
     pca_k: int = 5,
     max_n_sweep: int = 30,
-) -> tuple[int, str]:
+) -> tuple[int, str, list[dict]]:
     """
     Selección de N por mini-sweep con PCA-CORAL en target (si pair y model disponibles).
 
@@ -74,14 +74,20 @@ def select_mask_n(
     independiente de y_target pero menos preciso).
 
     Cap: máximo 25% de las features para evitar eliminar demasiada señal.
+
+    Returns
+    -------
+    n_opt : int
+    reason : str
+    sweep_history : list[dict]  — [{n, auroc}, ...] si se hizo sweep; [] en fallback
     """
     sorted_features = sorted(profile.features, key=lambda f: f.combined_score)
     p = len(sorted_features)
     max_n = max(1, min(max_n_sweep, p // 4))
 
     if pair is not None and model is not None:
-        n_opt, reason = _sweep_mask_n(pair, model, sorted_features, max_n, pca_k)
-        return n_opt, reason
+        n_opt, reason, sweep_history = _sweep_mask_n(pair, model, sorted_features, max_n, pca_k)
+        return n_opt, reason, sweep_history
 
     # Fallback: elbow
     scores = np.array([f.combined_score for f in sorted_features])
@@ -89,14 +95,22 @@ def select_mask_n(
     n_ponzonous = len(profile.ponzonous_features())
     n_elbow = max(n_elbow, min(1, n_ponzonous))
     n_elbow = min(n_elbow, max_n)
-    return n_elbow, f"elbow del combined score en source: N={n_elbow} (D_ponzonous={n_ponzonous})"
+    return n_elbow, f"elbow of combined score in source: N={n_elbow} (D_ponzonous={n_ponzonous})", []
 
 
-def _sweep_mask_n(pair, model, sorted_features, max_n: int, pca_k: int) -> tuple[int, str]:
+def _sweep_mask_n(
+    pair, model, sorted_features, max_n: int, pca_k: int
+) -> tuple[int, str, list[dict]]:
     """
     Barre N=0..max_n y devuelve el N que maximiza AUROC target con PCA-CORAL.
 
     Cada paso: mask las bottom-N features → PCA-CORAL k=pca_k → predict → AUROC.
+
+    Returns
+    -------
+    best_n : int
+    reason : str
+    sweep_history : list[dict]  — [{n, auroc}, ...] para todos los N probados
     """
     import warnings
     from sklearn.metrics import roc_auc_score
@@ -104,6 +118,7 @@ def _sweep_mask_n(pair, model, sorted_features, max_n: int, pca_k: int) -> tuple
 
     feat_names = [f.name for f in sorted_features]
     best_n, best_auroc = 0, -1.0
+    sweep_history: list[dict] = []
 
     for n in range(0, max_n + 1):
         try:
@@ -130,6 +145,7 @@ def _sweep_mask_n(pair, model, sorted_features, max_n: int, pca_k: int) -> tuple
 
             scores = model.predict_proba(X_t_full)
             auroc = float(roc_auc_score(masked.y_t, scores))
+            sweep_history.append({"n": n, "auroc": auroc})
 
             if auroc > best_auroc:
                 best_auroc = auroc
@@ -138,11 +154,11 @@ def _sweep_mask_n(pair, model, sorted_features, max_n: int, pca_k: int) -> tuple
             continue
 
     reason = (
-        f"mini-sweep PCA-CORAL k={pca_k} en target: N={best_n} "
-        f"(AUROC={best_auroc:.4f}, barrido 0..{max_n})"
+        f"mini-sweep PCA-CORAL k={pca_k} on target: N={best_n} "
+        f"(AUROC={best_auroc:.4f}, sweep 0..{max_n})"
     )
     logger.info("  [mask_n_sweep] %s", reason)
-    return best_n, reason
+    return best_n, reason, sweep_history
 
 
 def _compute_elbow(scores: np.ndarray) -> int:
@@ -193,8 +209,8 @@ def should_apply_quantile_transform_per_feature(
 
     n_apply = sum(decisions.values())
     return decisions, (
-        f"QT en {n_apply} features tras filtrar near-constants (CV<{CV_TARGET_QT_MINIMUM}) "
-        f"y ratios moderados ({VAR_RATIO_QT_LOWER}–{VAR_RATIO_QT_UPPER})"
+        f"QT on {n_apply} features after filtering near-constants (CV<{CV_TARGET_QT_MINIMUM}) "
+        f"and moderate ratios ({VAR_RATIO_QT_LOWER}–{VAR_RATIO_QT_UPPER})"
     )
 
 
@@ -236,7 +252,7 @@ def should_apply_woe_per_feature(
 
     n_apply = sum(decisions.values())
     return decisions, (
-        f"WOE en {n_apply} features STABLE/LINEAR_RECOVERABLE con SHAP >= {SHAP_WOE_MINIMUM}"
+        f"WOE on {n_apply} STABLE/LINEAR_RECOVERABLE features with SHAP >= {SHAP_WOE_MINIMUM}"
     )
 
 
@@ -256,7 +272,7 @@ def should_apply_pca_coral(profile: DriftProfile) -> tuple[bool, str]:
 
     Siempre retorna True — la excepción es un TO-DO para v0.2.
     """
-    return True, "PCA-CORAL es el aligner default robusto bajo cualquier p/n ratio"
+    return True, "PCA-CORAL is the default robust aligner under any p/n ratio"
 
 
 def select_pca_coral_k(profile: DriftProfile) -> tuple[int, str]:
@@ -295,7 +311,7 @@ def select_pca_coral_k(profile: DriftProfile) -> tuple[int, str]:
     k_final = max(PCA_CORAL_K_RANGE_MIN, k_final)
 
     return k_final, (
-        f"k_cv={k_cv} (var≥80% en source), recortado a sqrt(n_target)={max_k} → k={k_final}"
+        f"k_cv={k_cv} (var≥80% in source), clipped to sqrt(n_target)={max_k} → k={k_final}"
     )
 
 
@@ -315,21 +331,21 @@ def should_recalibrate(profile: DriftProfile) -> tuple[bool, str]:
     if profile.n_target_events < N_EVENTS_MINIMUM_CALIBRATION:
         return False, (
             f"n_target_events={profile.n_target_events} < {N_EVENTS_MINIMUM_CALIBRATION}: "
-            f"calibración LOO inestable, skip"
+            f"LOO calibration unstable, skip"
         )
     slope = profile.baseline_calibration_slope
     if np.isnan(slope):
-        return False, "slope=NaN: no se puede evaluar, skip calibración"
+        return False, "slope=NaN: cannot evaluate, skip calibration"
 
     deviation = abs(slope - 1.0)
     if deviation <= CALIBRATION_SLOPE_RECAL_THRESHOLD:
         return False, (
             f"slope={slope:.2f}: |slope-1|={deviation:.2f} <= {CALIBRATION_SLOPE_RECAL_THRESHOLD}: "
-            f"calibración aceptable, skip"
+            f"calibration acceptable, skip"
         )
     return True, (
         f"slope={slope:.2f}: |slope-1|={deviation:.2f} > {CALIBRATION_SLOPE_RECAL_THRESHOLD}: "
-        f"recalibración necesaria"
+        f"recalibration required"
     )
 
 
@@ -348,18 +364,18 @@ def select_calibration_method(profile: DriftProfile) -> tuple[str, str]:
     if profile.n_target_events >= N_EVENTS_ISOTONIC:
         return "isotonic_loo", (
             f"n_events_target={profile.n_target_events} >= {N_EVENTS_ISOTONIC}: "
-            f"isotónica viable"
+            f"isotonic regression viable"
         )
 
     # Test de heterogeneidad simplificado: comparar slopes en terciles del score predicho
     p_het = _test_calibration_heterogeneity(profile)
     if p_het < CALIBRATION_HETEROGENEITY_PVALUE:
         return "platt_stratified", (
-            f"heterogeneidad de slopes p={p_het:.3f} < {CALIBRATION_HETEROGENEITY_PVALUE}: "
-            f"calibración estratificada por score"
+            f"slope heterogeneity p={p_het:.3f} < {CALIBRATION_HETEROGENEITY_PVALUE}: "
+            f"stratified calibration by score"
         )
 
-    return "platt_loo", "Platt LOO global: default robusto con n pequeño"
+    return "platt_loo", "Platt LOO global: robust default with small n"
 
 
 def _test_calibration_heterogeneity(profile: DriftProfile) -> float:

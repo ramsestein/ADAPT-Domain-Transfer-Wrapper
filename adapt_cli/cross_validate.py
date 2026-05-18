@@ -152,7 +152,7 @@ def cross_validate_adapt(
 
     if n_pos < n_splits:
         logger.warning(
-            "n_eventos=%d < n_splits=%d. Reduciendo n_splits.",
+            "n_events=%d < n_splits=%d. Reducing n_splits.",
             n_pos, n_splits,
         )
         n_splits = max(2, n_pos)
@@ -165,7 +165,7 @@ def cross_validate_adapt(
 
     for fold_idx, (train_idx, test_idx) in enumerate(skf.split(np.zeros(n), y)):
         if y[train_idx].sum() < 2 or y[test_idx].sum() < 1:
-            logger.warning("Fold %d: eventos insuficientes en train/test, skip.", fold_idx)
+            logger.warning("Fold %d: insufficient events in train/test, skip.", fold_idx)
             skipped += 1
             continue
 

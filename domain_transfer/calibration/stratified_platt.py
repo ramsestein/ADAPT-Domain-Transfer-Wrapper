@@ -96,13 +96,26 @@ class StratifiedPlattRecalibrator:
         max_iter: int = 1000,
         cpb_col: str = "cpb_time",
         age_col: str = "age",
+        C: float = 1.0,
     ) -> None:
+        """
+        Parameters
+        ----------
+        C : float
+            Inverse of L2 regularisation strength for the Platt scaling
+            logistic regression.  Smaller values → stronger regularisation.
+            ``C=1e9`` reproduces the legacy no-regularisation behaviour.
+            ``C=1.0`` is a sensible default for small target cohorts.
+            Isotonic regression does not use this parameter.
+            Default: 1.0.
+        """
         self.strategy = strategy
         self.n_strata = n_strata
         self.min_stratum_size = min_stratum_size
         self.max_iter = max_iter
         self.cpb_col = cpb_col
         self.age_col = age_col
+        self.C = C
 
         # Después del fit
         self._global_calibrator: Optional[LogisticRegression] = None
@@ -138,9 +151,9 @@ class StratifiedPlattRecalibrator:
         """
         n = len(scores)
         if len(y_target) != n:
-            raise ValueError("scores e y_target deben tener el mismo tamaño.")
+            raise ValueError("scores and y_target must have the same size.")
         if y_target.sum() < 2:
-            raise ValueError("Se necesitan al menos 2 eventos en target.")
+            raise ValueError("At least 2 positive events required in target.")
 
         # ── Calibración global (fallback) ────────────────────────────────
         self._global_calibrator = self._fit_platt_loo(scores, y_target)
@@ -158,7 +171,7 @@ class StratifiedPlattRecalibrator:
 
             if n_s < self.min_stratum_size or n_events_s < 2 or (n_s - n_events_s) < 2:
                 logger.warning(
-                    "Estrato %d: n=%d, n_events=%d → fallback a calibración global.",
+                    "Stratum %d: n=%d, n_events=%d → falling back to global calibration.",
                     sid, n_s, n_events_s,
                 )
                 self._stratum_calibrators[sid] = None  # usar global
@@ -172,7 +185,7 @@ class StratifiedPlattRecalibrator:
 
         self._fitted = True
         logger.info(
-            "StratifiedPlattRecalibrator: %d estratos, strategy='%s'.",
+            "StratifiedPlattRecalibrator: %d strata, strategy='%s'.",
             len(unique_strata), self.strategy if isinstance(self.strategy, str) else "custom",
         )
         return self
@@ -200,7 +213,7 @@ class StratifiedPlattRecalibrator:
             fit_intercept=True,
             max_iter=self.max_iter,
             solver="lbfgs",
-            C=1e9,  # sin regularización: Platt puro
+            C=self.C,
             random_state=42,
         )
         lr.fit(X, y_sub)
@@ -368,24 +381,24 @@ class StratifiedPlattRecalibrator:
     def summary(self) -> str:
         """Resumen textual de la calibración por estrato."""
         if not self._fitted:
-            return "No ajustado aún."
+            return "Not yet fitted."
         lines = [
-            "StratifiedPlattRecalibrator — resumen",
-            f"  Estrategia: {self.strategy}",
+            "StratifiedPlattRecalibrator — summary",
+            f"  Strategy: {self.strategy}",
             "",
-            "  Por estrato:",
+            "  Per stratum:",
         ]
         if self.calibration_report_ is not None:
             for _, row in self.calibration_report_.iterrows():
-                fb = " [fallback global]" if row["uses_global_fallback"] else ""
+                fb = " [global fallback]" if row["uses_global_fallback"] else ""
                 lines.append(
-                    f"  Estrato {int(row['stratum'])}: "
+                    f"  Stratum {int(row['stratum'])}: "
                     f"n={int(row['n'])}, events={int(row['n_events'])}, "
                     f"CITL={row['CITL']:+.3f}, slope={row['calibration_slope']:.2f}, "
                     f"ECE={row['ECE_5bins']:.3f}{fb}"
                 )
         lines.append("")
         lines.append(
-            "  NOTA: n por estrato ≈ 35 — resultados exploratorios únicamente."
+            "  NOTE: n per stratum ≈ 35 — exploratory results only."
         )
         return "\n".join(lines)

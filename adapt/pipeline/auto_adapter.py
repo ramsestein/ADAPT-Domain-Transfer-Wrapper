@@ -104,6 +104,23 @@ class AutoAdapter:
         self._fitted_calibrator = None
         self._fitted = False
 
+        # Trazabilidad
+        self._feature_log: dict = {}   # {feature_name: dict con stats pre/post}
+
+    # ── Propiedades de trazabilidad ───────────────────────────────────────────
+
+    @property
+    def audit(self):
+        """DesignerAuditTrail o None si design() no se ha llamado."""
+        if self._config is not None:
+            return getattr(self._config, "audit", None)
+        return None
+
+    @property
+    def feature_log(self) -> dict:
+        """Log por feature: stats de distribución pre/post alineamiento + KS."""
+        return self._feature_log
+
     # ── API pública ───────────────────────────────────────────────────────────
 
     def profile(self, pair: CohortPair) -> DriftProfile:
@@ -196,7 +213,7 @@ class AutoAdapter:
         # Paso 1: Aplicar máscara
         working_pair = pair
         if config.apply_mask and config.mask_features:
-            logger.info("  Aplicando máscara: %d features", len(config.mask_features))
+            logger.info("  Applying mask: %d features", len(config.mask_features))
             working_pair = working_pair.mask_features(config.mask_features)
 
         # Paso 2: WOE (fit en source)
@@ -235,7 +252,11 @@ class AutoAdapter:
 
         self._working_pair_ref = working_pair
         self._fitted = True
-        logger.info("  AutoAdapter fit completado.")
+        logger.info("  AutoAdapter fit complete.")
+
+        # Poblar feature_log
+        self._feature_log = self._build_feature_log(pair, working_pair)
+
         return self
 
     def predict(self, pair: CohortPair) -> np.ndarray:
@@ -354,7 +375,7 @@ class AutoAdapter:
         X_s_woe = pair.X_s_imp[:, woe_idx_corr]
         encoder = WOEEncoder(n_bins=self._config.woe_n_bins)
         encoder.fit(X_s_woe, pair.y_s)
-        logger.info("  WOE encoder ajustado (%d features).", len(woe_idx_corr))
+        logger.info("  WOE encoder fitted (%d features).", len(woe_idx_corr))
         return encoder
 
     def _fit_qt(
@@ -375,7 +396,7 @@ class AutoAdapter:
         nan_mask_t = pair.nan_mask_t[:, qt_idx_corr]
         aligner = QuantileTransformAligner(output_distribution=output_distribution)
         aligner.fit(X_s_qt, X_t_qt)
-        logger.info("  QT aligner ajustado (%d features).", len(qt_idx_corr))
+        logger.info("  QT aligner fitted (%d features).", len(qt_idx_corr))
         return aligner
 
     def _fit_calibrator(
@@ -395,7 +416,7 @@ class AutoAdapter:
         elif method == "isotonic_loo":
             return _fit_isotonic_loo(scores, y_target)
         else:
-            raise ValueError(f"Método de calibración desconocido: {method}")
+            raise ValueError(f"Unknown calibration method: {method}")
 
     # ── Helpers de conveniencia (sin CohortPair) ─────────────────────────────
 
@@ -490,6 +511,141 @@ class AutoAdapter:
     def config_(self) -> Optional[AdapterConfig]:
         """AdapterConfig seleccionado por .design()."""
         return self._config
+
+    # ── Feature log ──────────────────────────────────────────────────────────
+
+    def _build_feature_log(self, pair_pre_mask: "CohortPair", pair_post_mask: "CohortPair") -> dict:
+        """
+        Construye el log por feature con estadísticas de distribución pre/post
+        alineamiento y estadístico KS.
+
+        Devuelve un dict {feature: {source_dist_summary, target_dist_summary,
+        alignment_method, post_align_dist_summary, ks_stat_pre, ks_stat_post}}.
+        """
+        from scipy.stats import ks_2samp
+        import warnings
+
+        config = self._config
+        if config is None:
+            return {}
+
+        schema = pair_post_mask.schema
+        feat2idx = {f: i for i, f in enumerate(schema)}
+
+        def _dist_summary(arr: np.ndarray) -> dict:
+            valid = arr[~np.isnan(arr)]
+            if len(valid) == 0:
+                return {"mean": None, "std": None, "q25": None, "q50": None,
+                        "q75": None, "n": 0, "n_missing": int(np.isnan(arr).sum())}
+            return {
+                "mean": float(np.mean(valid)),
+                "std": float(np.std(valid, ddof=1)) if len(valid) > 1 else 0.0,
+                "q25": float(np.percentile(valid, 25)),
+                "q50": float(np.percentile(valid, 50)),
+                "q75": float(np.percentile(valid, 75)),
+                "n": int(len(valid)),
+                "n_missing": int(np.isnan(arr).sum()),
+            }
+
+        # Computar scores target ANTES del alineamiento para post_align_dist
+        X_t_pre = pair_post_mask.X_t_imp.copy()
+        X_s = pair_post_mask.X_s_imp
+        idx_corr = pair_post_mask.idx_corr
+        nan_mask_t = pair_post_mask.nan_mask_t
+
+        # Aplicar el mismo pipeline para obtener X_t_post
+        X_t_post = X_t_pre.copy()
+
+        if config.apply_woe and self._fitted_woe is not None:
+            woe_idx = [feat2idx[f] for f in config.woe_features if f in feat2idx]
+            woe_idx_corr = [j for j in woe_idx if j in idx_corr]
+            if woe_idx_corr:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    X_t_post[:, woe_idx_corr] = self._fitted_woe.transform(
+                        X_t_post[:, woe_idx_corr]
+                    )
+
+        if config.apply_quantile and self._fitted_qt is not None:
+            qt_idx = [feat2idx[f] for f in config.quantile_features if f in feat2idx]
+            qt_idx_corr = [j for j in qt_idx if j in idx_corr]
+            if qt_idx_corr:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    X_t_post[:, qt_idx_corr] = self._fitted_qt.transform(
+                        X_t_post[:, qt_idx_corr],
+                        nan_mask=nan_mask_t[:, qt_idx_corr],
+                    )
+
+        mu_s = pair_post_mask.mu_s
+        X_t_post_imp = np.where(np.isnan(X_t_post), mu_s[np.newaxis, :], X_t_post)
+        X_t_post_imp = np.nan_to_num(X_t_post_imp, nan=0.0)
+
+        if config.apply_pca_coral and self._fitted_aligner is not None:
+            X_s_corr = np.nan_to_num(X_s[:, idx_corr], nan=0.0)
+            X_t_corr = np.nan_to_num(X_t_post_imp[:, idx_corr], nan=0.0)
+            nan_mask_corr = nan_mask_t[:, idx_corr]
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                try:
+                    self._fitted_aligner.fit(X_s_corr, X_t_corr)
+                    X_t_aligned = self._fitted_aligner.transform(X_t_corr, nan_mask=nan_mask_corr)
+                    X_t_post_imp[:, idx_corr] = X_t_aligned
+                except Exception:
+                    pass
+
+        # Determinar método de alineamiento por feature
+        qt_feats = set(config.quantile_features) if config.apply_quantile else set()
+        woe_feats = set(config.woe_features) if config.apply_woe else set()
+        mask_feats = set(config.mask_features) if config.apply_mask else set()
+
+        feature_log = {}
+        for feat in schema:
+            idx = feat2idx[feat]
+            src_col = X_s[:, idx]
+            tgt_col_pre = X_t_pre[:, idx]
+            tgt_col_post = X_t_post_imp[:, idx]
+
+            if feat in mask_feats:
+                align_method = "masked"
+            elif feat in woe_feats and feat in qt_feats:
+                align_method = "woe+qt+pca_coral"
+            elif feat in woe_feats:
+                align_method = "woe+pca_coral"
+            elif feat in qt_feats:
+                align_method = "qt+pca_coral"
+            elif config.apply_pca_coral and idx in idx_corr:
+                align_method = "pca_coral"
+            else:
+                align_method = "none"
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                try:
+                    ks_pre = float(ks_2samp(
+                        src_col[~np.isnan(src_col)],
+                        tgt_col_pre[~np.isnan(tgt_col_pre)],
+                    ).statistic)
+                except Exception:
+                    ks_pre = None
+                try:
+                    ks_post = float(ks_2samp(
+                        src_col[~np.isnan(src_col)],
+                        tgt_col_post[~np.isnan(tgt_col_post)],
+                    ).statistic)
+                except Exception:
+                    ks_post = None
+
+            feature_log[feat] = {
+                "source_dist_summary": _dist_summary(src_col),
+                "target_dist_summary": _dist_summary(tgt_col_pre),
+                "alignment_method": align_method,
+                "post_align_dist_summary": _dist_summary(tgt_col_post),
+                "ks_stat_pre": ks_pre,
+                "ks_stat_post": ks_post,
+            }
+
+        return feature_log
 
 
 # ── Calibradores standalone ───────────────────────────────────────────────────

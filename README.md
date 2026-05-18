@@ -1,41 +1,110 @@
 # ADAPT — Domain Transfer Wrapper
 
-Adapt a binary predictive model (XGBoost / sklearn / Keras / PyTorch / BYOM)
-trained on a **source** dataset so it can be used on a different **target**
-dataset, **without re-training** the model. The only thing required is a
-validation cohort from the target domain with known outcomes.
+[![CI](https://github.com/your-org/xIA-ko-bcn/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/xIA-ko-bcn/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12-blue.svg)](pyproject.toml)
 
-> Typical use case: a collaborator hands you a predictive model trained at
-> hospital A. You want to validate it at hospital B (which has covariate
-> drift, a different prevalence and a different missingness pattern). This
-> wrapper gives you the "calibrated-adapted" version of the model plus a
-> discrepancy report.
+**Adapt and audit predictive models across domains without retraining.**
+
+Wrap a frozen binary predictive model (XGBoost / sklearn / Keras / PyTorch / BYOM)
+so it works on a new target domain — and produce an honest report that tells
+you whether the wrapper is enough or you need to retrain.
+
+---
+
+## What problem this solves
+
+A collaborator hands you a model trained at hospital A.  You need to validate
+and deploy it at hospital B, which has different covariate distributions,
+prevalence, and missingness patterns.  ADAPT adds alignment and calibration
+layers around the frozen model — never touching its weights — and delivers a
+quantified verdict: recoverable drift (wrapper sufficient) or structural drift
+(retrain).
+
+---
+
+## How it works
+
+```mermaid
+flowchart TB
+    TGT["Target data\n(new row)"]
+
+    subgraph WRAPPER["ADAPT wrapper"]
+        direction TB
+        AL["Alignment layer\nPCA-CORAL · QT · WOE\n(fitted on target cohort)"]
+        FM["FROZEN MODEL\nnever retrained\nweights unchanged"]
+        CL["Calibration layer\nPlatt L2\n(fitted on target cohort)"]
+        AL --> FM --> CL
+    end
+
+    TGT --> AL
+    CL --> PROB["calibrated_probability"]
+    FM -.->|"parallel output"| DR["Drift Report\nrecovery_ratio · optimism_gap\nrecoverable / irreducible gap\naudit trail · counterfactuals"]
+
+    style FM fill:#d9d9d9,stroke:#888,stroke-dasharray:4 4,color:#444
+    style WRAPPER fill:#f0f4ff,stroke:#5577cc
+```
+
+The dashed border on **FROZEN MODEL** is intentional: the wrapper wraps
+around it but never reaches inside.  For the full design with fit-time and
+inference-time diagrams see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
 ## Quick start
 
 ```bash
-# 1. Drop your files in
-cp your_model.json inputs/models/
-cp source.csv      inputs/source/
-cp target.csv      inputs/target/
+# 1. Install
+pip install -e ".[dev]"
 
-# 2. Copy the example config and edit the paths
+# 2. Drop your files in
+cp your_model.json  inputs/models/
+cp source.csv       inputs/source/
+cp target.csv       inputs/target/
+
+# 3. Copy the example config and edit paths
 cp configs/example_snuh_to_clinic.yaml configs/my_run.yaml
 
-# 3. Run
+# 4. Run
 python -m adapt_cli.run --config configs/my_run.yaml
+
+# Faster iteration (skip oracle + attribution)
+python -m adapt_cli.run --config configs/my_run.yaml --skip-expensive
+
+# Override a single parameter without editing the YAML
+python -m adapt_cli.run --config configs/my_run.yaml --override adapt.pca_k=8
 ```
 
-A self-contained HTML report is produced under `outputs/reports/` containing:
+For the full walkthrough — including how to interpret every section of the
+report — see [docs/USAGE.md](docs/USAGE.md).
 
-- **Original-model reference** — performance of the unmodified model on its
-  source domain (upper bound for the transfer).
-- **Raw vs adapted metrics** on the target — AUROC, precision, recall, F1.
-- **Calibration curve** before / after the pipeline.
-- **Designer decisions** — which features were masked, PCA-CORAL k, etc.
-- **Section 3.3 — honest validation (k-fold CV)** with the *optimism gap*.
+---
+
+## What you get
+
+| Output | Description |
+|--------|-------------|
+| `outputs/adapted_models/<run_id>.joblib` | Callable wrapper — load with `joblib.load()` and call `.predict_proba(X_target)` for production inference |
+| `outputs/reports/<run_id>.html` | Self-contained HTML report with all sections: drift, attribution, audit trail, calibration decomposition, counterfactuals |
+| `outputs/audit/<run_id>.yaml` | SHA-256 hashes of every input, full config, designer decisions, dependency versions — for exact reproducibility |
+
+---
+
+## Decision boundaries
+
+Use these two metrics first when reading the report:
+
+| Metric | Value | Interpretation | Action |
+|--------|-------|----------------|--------|
+| `optimism_gap` | < 0.02 | Robust | Deploy wrapper with confidence |
+| `optimism_gap` | 0.02 – 0.05 | Moderate | Increase `n_target` or reduce `max_n_sweep` |
+| `optimism_gap` | > 0.05 | Suspicious | Do not deploy; collect more target data |
+| `recovery_ratio` | > 0.7 | Distributional drift | Wrapper sufficient |
+| `recovery_ratio` | 0.3 – 0.7 | Mixed drift | Wrapper useful; evaluate retraining |
+| `recovery_ratio` | < 0.3 | Structural drift | Retrain |
+
+Full table (including joint drift and Brier decomposition signals) in
+[docs/ARCHITECTURE.md — Decision boundaries](docs/ARCHITECTURE.md#decision-boundaries).
 
 ---
 
@@ -45,9 +114,13 @@ A self-contained HTML report is produced under `outputs/reports/` containing:
 adapt_cli/            Public CLI package
   ├── model_loader.py     Loads XGB / sklearn / keras / torch / BYOM
   ├── data_loader.py      CSV/parquet → CohortPair
-  ├── config_schema.py    YAML validation
-  ├── cross_validate.py   Honest k-fold
-  ├── drift_compute.py    Self-contained per-feature drift decomposition
+  ├── config_schema.py    YAML validation (all parameters documented)
+  ├── cross_validate.py   Honest k-fold (optimism gap)
+  ├── drift_compute.py    Per-feature drift decomposition (six-category taxonomy)
+  ├── joint_drift.py      VIF / condition number / effective rank analysis
+  ├── drift_attribution.py  Recoverable vs irreducible gap with DeLong CIs
+  ├── counterfactuals.py  Alternative config sweep
+  ├── oracle.py           Target oracle (k-fold ceiling)
   └── run.py              End-to-end orchestrator
 
 adapt/                Internals (profiler, designer, pipeline, reporter)
@@ -64,60 +137,59 @@ tests/                Regression tests
 
 ## Supported model formats
 
-| Extension              | Backend             | Notes |
-|------------------------|---------------------|-------|
-| `.json` `.ubj` `.bin`  | XGBoost             | Native NaN handling. Recommended. |
-| `.joblib` `.pkl`       | sklearn / anything with `.predict_proba()` | |
-| `.h5` `.keras`         | Keras / TensorFlow  | NaNs are imputed to 0. |
-| `.pt` `.pth`           | PyTorch (`torch.save(model)`) | Full model required, not a state_dict. |
-| **BYOM**               | Anything            | Your own `.py` with `def load_model(path):` |
+| Extension | Backend | Notes |
+|---|---|---|
+| `.json` `.ubj` `.bin` | XGBoost | Native NaN handling. Recommended. |
+| `.joblib` `.pkl` | sklearn / `.predict_proba()` | |
+| `.h5` `.keras` | Keras / TensorFlow | NaNs imputed to 0. |
+| `.pt` `.pth` | PyTorch (`torch.save(model)`) | Full model required, not state_dict. |
+| **BYOM** | Anything | Your `.py` with `def load_model(path):` |
 
-See [docs/MODEL_FORMAT.md](docs/MODEL_FORMAT.md) for details.
-
----
-
-## Overfitting control
-
-The mask-size selector (sweep) optimises against the target labels and can
-therefore overfit. To make this visible the CLI runs **two evaluations in
-parallel**:
-
-1. **In-sample** — sweep + fit + predict on the whole target (what you see
-   when you adapt).
-2. **Honest k-fold** — each fold redoes the sweep on its train split only
-   and predicts on the held-out test split.
-
-The difference `in_sample − OOF` is your **optimism gap**:
-
-- `< 0.02` → no overfitting; the adapted pipeline is robust.
-- `0.02–0.05` → moderate optimism.
-- `> 0.05` → suspicious. Increase `n_target` or lower `max_n_sweep`.
-
-See [docs/OVERFITTING.md](docs/OVERFITTING.md).
-
----
-
-## Drift cache
-
-The first run computes a per-feature drift decomposition (LASSO + XGBoost,
-CORAL / PCA-CORAL recovery, six-category taxonomy) for every feature in the
-schema. This takes a few minutes for ~100 features and is cached to
-`outputs/cache/drift_decomposition.csv`. Subsequent runs reuse the cache
-instantly.
+See [docs/MODEL_FORMAT.md](docs/MODEL_FORMAT.md) for full details and examples.
 
 ---
 
 ## Limitations
 
 - Binary outcomes only (label ∈ {0, 1}).
-- Numeric features only (encode categoricals upstream).
-- The model is **never** re-trained: the wrapper aligns covariates and
-  recalibrates probabilities. If the model is structurally wrong for the
-  target, ADAPT will not fix it.
-- Requires labels in the target cohort (this is validation, not blind
-  inference).
+- Numeric features only — encode categoricals upstream.
+- The wrapper does **not** fix structural drift (changed feature–outcome
+  relationships); only retraining can.
+- Requires outcome labels in the target cohort (validation, not blind inference).
 
 ---
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Mental model, 3 Mermaid diagrams, anatomy of outputs, decision boundaries |
+| [docs/USAGE.md](docs/USAGE.md) | End-to-end walkthrough: setup → config → run → interpret → infer → reproduce |
+| [docs/MODEL_FORMAT.md](docs/MODEL_FORMAT.md) | All supported backends, saving instructions, BYOM skeleton |
+| [docs/OVERFITTING.md](docs/OVERFITTING.md) | Optimism gap: definition, thresholds, mitigation strategies |
+| [docs/DRIFT_REPORT.md](docs/DRIFT_REPORT.md) | Every metric in the report: definition, formula, thresholds |
+
+---
+
+## Citation
+
+If you use ADAPT in your work, please cite:
+
+```bibtex
+@software{marrero_garcia_adapt_2026,
+  author  = {Marrero García, Ramses},
+  title   = {ADAPT — Domain Transfer Wrapper},
+  year    = {2026},
+  version = {0.2.0},
+  license = {MIT}
+}
+```
+
+See [CITATION.cff](CITATION.cff) for the full citation metadata.
+
+---
+
+<!-- topics: domain-adaptation, transfer-learning, clinical-ml, model-calibration, coral, drift-detection, covariate-shift, model-validation -->
 
 ## Citation
 

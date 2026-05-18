@@ -114,12 +114,12 @@ class CombinedScoreSelector:
         """
         if self._sorted_indices_ is None:
             raise RuntimeError(
-                "CombinedScoreSelector no está ajustado.  Llama a fit() primero."
+                "CombinedScoreSelector is not fitted.  Call fit() first."
             )
         k = self.n_to_mask if n is None else int(n)
         if k > len(self.scores_):
             raise ValueError(
-                f"n={k} excede el número de features ({len(self.scores_)})."
+                f"n={k} exceeds the number of features ({len(self.scores_)})."
             )
         return self._sorted_indices_[:k]
 

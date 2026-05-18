@@ -41,6 +41,7 @@ and ``w_alignment_eval.py``'s PCA-CORAL block with the same seed and k.
 from __future__ import annotations
 
 import logging
+from typing import Union
 
 import numpy as np
 from sklearn.decomposition import PCA
@@ -65,6 +66,19 @@ class PCACoralAligner(Aligner):
         Default 1e-6 (matches legacy scripts).
     random_state : int
         Seed for PCA's randomised SVD.
+    shrinkage : str, float, or None
+        Shrinkage estimator applied to the *latent-space* covariance matrices
+        (after PCA projection).
+
+        - ``"auto"`` : use :class:`sklearn.covariance.LedoitWolf`
+          to estimate the optimal shrinkage automatically.
+          Recommended when ``n_target`` is small relative to ``k``.
+        - ``float ∈ [0, 1]`` : manual shrinkage coefficient.
+        - ``None`` or ``0`` : no shrinkage (legacy behaviour).
+
+        The estimated Ledoit-Wolf coefficient is stored in
+        ``lw_coef_source_`` and ``lw_coef_target_`` after fitting.
+        Default: ``"auto"``.
     """
 
     def __init__(
@@ -72,10 +86,12 @@ class PCACoralAligner(Aligner):
         k: int = 5,
         reg_pca: float = 1e-6,
         random_state: int = 42,
+        shrinkage: Union[str, float, None] = "auto",
     ) -> None:
         self.k = k
         self.reg_pca = reg_pca
         self.random_state = random_state
+        self.shrinkage = shrinkage
 
         self._pca: PCA | None = None
         self._mu_xs: np.ndarray | None = None
@@ -83,6 +99,48 @@ class PCACoralAligner(Aligner):
         self._A_pca: np.ndarray | None = None
         self._mu_zs: np.ndarray | None = None
         self._mu_zt: np.ndarray | None = None
+        self.lw_coef_source_: float | None = None
+        self.lw_coef_target_: float | None = None
+
+    # ── Covariance estimation ─────────────────────────────────────────────────
+
+    def _estimate_cov(
+        self, Z: np.ndarray, k: int, label: str
+    ) -> tuple[np.ndarray, float | None]:
+        """Estimate regularised covariance of latent matrix Z (n, k)."""
+        shrinkage = self.shrinkage
+
+        if shrinkage == "auto":
+            from sklearn.covariance import LedoitWolf
+            lw = LedoitWolf()
+            lw.fit(Z)
+            cov = lw.covariance_ + self.reg_pca * np.eye(k)
+            lw_coef = float(lw.shrinkage_)
+            logger.info(
+                "PCACoralAligner [%s]: LedoitWolf shrinkage=%.4f (n=%d, k=%d).",
+                label, lw_coef, Z.shape[0], k,
+            )
+            return cov, lw_coef
+
+        S = np.cov(Z, rowvar=False)
+        if isinstance(shrinkage, (int, float)) and shrinkage not in (None, 0, 0.0):
+            alpha = float(shrinkage)
+            if not (0.0 <= alpha <= 1.0):
+                raise ValueError(
+                    f"shrinkage must be in [0, 1] or 'auto' or None; got {alpha}."
+                )
+            mu = float(np.trace(S)) / k
+            cov = (1.0 - alpha) * S + alpha * mu * np.eye(k)
+            cov += self.reg_pca * np.eye(k)
+            logger.info(
+                "PCACoralAligner [%s]: manual shrinkage alpha=%.4f applied.",
+                label, alpha,
+            )
+            return cov, alpha
+
+        # None / 0 → legacy
+        cov = S + self.reg_pca * np.eye(k)
+        return cov, None
 
     def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> "PCACoralAligner":
         """
@@ -116,12 +174,12 @@ class PCACoralAligner(Aligner):
         Zs = self._pca.transform(Xs_std)
         Zt = self._pca.transform(Xt_std)
 
-        # Step 4 — CORAL in latent space
+        # Step 4 — CORAL in latent space (with optional shrinkage)
         self._mu_zs = Zs.mean(axis=0)
         self._mu_zt = Zt.mean(axis=0)
 
-        Sg_zs = np.cov(Zs, rowvar=False) + self.reg_pca * np.eye(k)
-        Sg_zt = np.cov(Zt, rowvar=False) + self.reg_pca * np.eye(k)
+        Sg_zs, self.lw_coef_source_ = self._estimate_cov(Zs, k, "source")
+        Sg_zt, self.lw_coef_target_ = self._estimate_cov(Zt, k, "target")
         self._A_pca = safe_sqrtm(Sg_zs) @ safe_invsqrtm(Sg_zt)
 
         return self

@@ -87,7 +87,7 @@ def adapt_result(adapt_data):
     """Ejecuta AutoAdapter sobre SNUH→Clínic y devuelve (config, scores, metrics)."""
     from adapt.pipeline.auto_adapter import AutoAdapter
     from adapt.profiler.global_profiler import (
-        _bootstrap_auroc, _calibration_slope, _ece_score
+        _bootstrap_auroc_from_scores as _bootstrap_auroc, _calibration_slope, _ece_score
     )
 
     data = adapt_data
