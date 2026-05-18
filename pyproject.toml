@@ -49,6 +49,9 @@ ignore = [
     "E501",           # line length managed per-file; 100-char limit catches obvious cases
 ]
 
+[tool.ruff.lint.isort]
+known-first-party = ["domain_transfer", "adapt", "adapt_cli"]
+
 # ── mypy ────────────────────────────────────────────────────────────────────
 [tool.mypy]
 python_version = "3.10"
