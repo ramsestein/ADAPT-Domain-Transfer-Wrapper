@@ -33,7 +33,7 @@ import uuid
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
@@ -70,8 +70,8 @@ def _compute_input_hash(
     schema: list[str],
     n_source: int,
     n_target: int,
-    X_source: Optional[np.ndarray] = None,
-    X_target: Optional[np.ndarray] = None,
+    X_source: np.ndarray | None = None,
+    X_target: np.ndarray | None = None,
 ) -> str:
     """
     Calcula SHA-256 de (schema + n_rows + sample_hash) sin PII.
@@ -121,16 +121,16 @@ def serialize_run_audit(
     schema: list[str],
     pair,
     auto_adapter,
-    oracle_result: Optional[dict],
-    drift_decomp: Optional[dict],
-    counterfactuals: Optional[dict],
-    calibration_raw: Optional[dict],
-    calibration_adapted: Optional[dict],
-    calibration_delta: Optional[dict],
-    feature_attribution: Optional[list],
-    config_dict: Optional[dict],
+    oracle_result: dict | None,
+    drift_decomp: dict | None,
+    counterfactuals: dict | None,
+    calibration_raw: dict | None,
+    calibration_adapted: dict | None,
+    calibration_delta: dict | None,
+    feature_attribution: list | None,
+    config_dict: dict | None,
     output_dir: str = "outputs/audit",
-    run_id: Optional[str] = None,
+    run_id: str | None = None,
 ) -> dict:
     """
     Serializa el audit completo del pipeline a un YAML y devuelve el dict.

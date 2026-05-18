@@ -26,13 +26,12 @@ import io
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
-from adapt.profiler.base import DriftProfile
 from adapt.designer.base import AdapterConfig
-from adapt.reporter import tables, figures
+from adapt.profiler.base import DriftProfile
+from adapt.reporter import figures, tables
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +100,11 @@ _HTML_CSS = """
 
 
 def _render_source_section(
-    source_metrics: Optional[dict],
-    n_source: Optional[int],
-    n_source_events: Optional[int],
+    source_metrics: dict | None,
+    n_source: int | None,
+    n_source_events: int | None,
     source_name: str,
-    baseline_auroc_target: Optional[float],
+    baseline_auroc_target: float | None,
 ) -> str:
     """Section 0: original model performance on its source domain (reference)."""
     if not source_metrics:
@@ -140,7 +139,7 @@ domain-transfer pipeline can realistically approach.
 """
 
 
-def _render_cv_section(in_sample: Optional[dict], cv: Optional[dict]) -> str:
+def _render_cv_section(in_sample: dict | None, cv: dict | None) -> str:
     """Section 3.3: in-sample vs honest CV comparison."""
     if not cv or not in_sample:
         return ""
@@ -204,7 +203,7 @@ out-of-fold scores.
 """
 
 
-def _render_patient_profiles_section(patient_profiles: Optional[dict]) -> str:
+def _render_patient_profiles_section(patient_profiles: dict | None) -> str:
     """Render Section 6: Patient Profile Clustering."""
     if not patient_profiles:
         return ""
@@ -395,7 +394,6 @@ def _render_joint_drift_section(joint_drift_data: dict) -> str:
         - "mi_delta"             : float or None  (Frobenius norm of MI-matrix diff)
         - "compute_mi_matrix"    : bool
     """
-    import pandas as pd
 
     if not joint_drift_data:
         return ""
@@ -532,9 +530,9 @@ in each cohort and the change |ΔVIF| is flagged against configurable thresholds
 
 
 def _render_drift_attribution_section(
-    drift_decomp: Optional[dict],
-    oracle_result: Optional[dict],
-    feature_attribution: Optional[list],
+    drift_decomp: dict | None,
+    oracle_result: dict | None,
+    feature_attribution: list | None,
 ) -> str:
     """Section: Drift Attribution — raw/adapted/oracle + gaps + feature attribution."""
     if drift_decomp is None and oracle_result is None:
@@ -674,7 +672,7 @@ The criterion is the business rule governing the decision.</p>
 """
 
 
-def _render_counterfactuals_section(counterfactuals: Optional[dict]) -> str:
+def _render_counterfactuals_section(counterfactuals: dict | None) -> str:
     """Section: Counterfactual Sensitivity."""
     if not counterfactuals:
         return ""
@@ -717,7 +715,7 @@ actually selected configuration.</p>
 """
 
 
-def _render_significance_section(sig: Optional[dict]) -> str:
+def _render_significance_section(sig: dict | None) -> str:
     """Section 3.4: Statistical significance tests (DeLong + bootstrap z-test)."""
     if not sig:
         return ""
@@ -793,8 +791,8 @@ def _render_significance_section(sig: Optional[dict]) -> str:
             )
     elif sig.get("adapted_vs_raw"):  # no source CI available
         rows.append(
-            f'<tr><td colspan="8"><small><em>'
-            f'Adapted vs Source comparison not available (bootstrap CI for source missing).</em></small></td></tr>'
+            '<tr><td colspan="8"><small><em>'
+            'Adapted vs Source comparison not available (bootstrap CI for source missing).</em></small></td></tr>'
         )
 
     if not rows:
@@ -817,7 +815,7 @@ Row 2 (Adapted vs Original): green badge = adapted is <em>not</em> significantly
 """
 
 
-def _render_feature_log_section(feature_log: Optional[dict], combined_scores: Optional[dict] = None) -> str:
+def _render_feature_log_section(feature_log: dict | None, combined_scores: dict | None = None) -> str:
     """Section: Per-feature log."""
     if not feature_log:
         return ""
@@ -879,10 +877,10 @@ Combined score = normalize(|L_base|)&#x2009;+&#x2009;normalize(SHAP importance) 
 
 
 def _render_calibration_decomp_section(
-    brier_raw: Optional[dict],
-    brier_adapted: Optional[dict],
-    brier_delta_dict: Optional[dict],
-    audit_yaml_path: Optional[str],
+    brier_raw: dict | None,
+    brier_adapted: dict | None,
+    brier_delta_dict: dict | None,
+    audit_yaml_path: str | None,
 ) -> str:
     """Section: Calibration Decomposition (Murphy) + YAML download."""
     parts = []
@@ -949,30 +947,30 @@ def generate_html_report(
     config: AdapterConfig,
     y_true: np.ndarray,
     scores_before: np.ndarray,
-    scores_after: Optional[np.ndarray] = None,
+    scores_after: np.ndarray | None = None,
     source_name: str = "Source",
     target_name: str = "Target",
-    output_path: Optional[str] = None,
-    auroc_after: Optional[float] = None,
-    slope_after: Optional[float] = None,
-    ece_after: Optional[float] = None,
-    auroc_ci_after: Optional[tuple] = None,
-    cv_results: Optional[dict] = None,
-    in_sample_metrics: Optional[dict] = None,
-    joint_drift_data: Optional[dict] = None,
+    output_path: str | None = None,
+    auroc_after: float | None = None,
+    slope_after: float | None = None,
+    ece_after: float | None = None,
+    auroc_ci_after: tuple | None = None,
+    cv_results: dict | None = None,
+    in_sample_metrics: dict | None = None,
+    joint_drift_data: dict | None = None,
     # ── Nuevas secciones de auditabilidad ─────────────────────────────────────
-    oracle_results: Optional[dict] = None,
-    drift_decomp: Optional[dict] = None,
-    feature_attribution: Optional[list] = None,
-    counterfactuals: Optional[dict] = None,
-    brier_decomp_raw: Optional[dict] = None,
-    brier_decomp_adapted: Optional[dict] = None,
-    brier_delta: Optional[dict] = None,
-    audit_yaml_path: Optional[str] = None,
-    feature_log: Optional[dict] = None,
-    patient_profiles: Optional[dict] = None,
-    significance_tests: Optional[dict] = None,
-    feature_combined_scores: Optional[dict] = None,
+    oracle_results: dict | None = None,
+    drift_decomp: dict | None = None,
+    feature_attribution: list | None = None,
+    counterfactuals: dict | None = None,
+    brier_decomp_raw: dict | None = None,
+    brier_decomp_adapted: dict | None = None,
+    brier_delta: dict | None = None,
+    audit_yaml_path: str | None = None,
+    feature_log: dict | None = None,
+    patient_profiles: dict | None = None,
+    significance_tests: dict | None = None,
+    feature_combined_scores: dict | None = None,
 ) -> str:
     """
     Generate a self-contained HTML report for the ADAPT pair.
@@ -1014,10 +1012,8 @@ def generate_html_report(
     str
         The full HTML document as a string.
     """
-    from adapt.profiler.global_profiler import (
-        _bootstrap_auroc_from_scores as _bootstrap_auroc,
-        _calibration_slope, _ece_score
-    )
+    from adapt.profiler.global_profiler import _bootstrap_auroc_from_scores as _bootstrap_auroc
+    from adapt.profiler.global_profiler import _calibration_slope, _ece_score
 
     timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     in_sample_metrics = in_sample_metrics or {}

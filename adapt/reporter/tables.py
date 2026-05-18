@@ -13,12 +13,10 @@ Tables produced:
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 
-from adapt.profiler.base import DriftProfile
 from adapt.designer.base import AdapterConfig
+from adapt.profiler.base import DriftProfile
 
 
 def _fmt(x, fmt=".4f") -> str:
@@ -50,9 +48,9 @@ def make_global_table(profile: DriftProfile) -> str:
 
 
 def make_source_table(
-    source_metrics: Optional[dict],
-    n_source: Optional[int] = None,
-    n_source_events: Optional[int] = None,
+    source_metrics: dict | None,
+    n_source: int | None = None,
+    n_source_events: int | None = None,
     source_name: str = "Source",
 ) -> str:
     """Markdown table reporting the original model performance on its source domain."""
@@ -170,18 +168,18 @@ def make_features_table(
 def make_eval_table(
     auroc_before: float,
     auroc_after: float,
-    auroc_ci_before: Optional[tuple] = None,
-    auroc_ci_after: Optional[tuple] = None,
-    slope_before: Optional[float] = None,
-    slope_after: Optional[float] = None,
-    ece_before: Optional[float] = None,
-    ece_after: Optional[float] = None,
-    n_target: Optional[int] = None,
-    n_events: Optional[int] = None,
-    auroc_source: Optional[float] = None,
-    auroc_ci_source: Optional[tuple] = None,
-    slope_source: Optional[float] = None,
-    ece_source: Optional[float] = None,
+    auroc_ci_before: tuple | None = None,
+    auroc_ci_after: tuple | None = None,
+    slope_before: float | None = None,
+    slope_after: float | None = None,
+    ece_before: float | None = None,
+    ece_after: float | None = None,
+    n_target: int | None = None,
+    n_events: int | None = None,
+    auroc_source: float | None = None,
+    auroc_ci_source: tuple | None = None,
+    slope_source: float | None = None,
+    ece_source: float | None = None,
 ) -> str:
     """Markdown table comparing metrics before/after the pipeline (with source as reference)."""
 

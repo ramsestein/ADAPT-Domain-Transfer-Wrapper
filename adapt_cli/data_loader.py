@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -40,7 +39,7 @@ class GenericCohortLoader(CohortLoader):
         schema: list[str],
         outcome_col: str,
         label_positive_value=1,
-        unit_corrections: Optional[dict] = None,
+        unit_corrections: dict | None = None,
     ) -> None:
         super().__init__(schema=schema, label_col="label")
         self.path = Path(path)

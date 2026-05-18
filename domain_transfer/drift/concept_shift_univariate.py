@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -105,7 +104,7 @@ class UnivariateConceptShiftDiagnoser:
         self.max_iter = max_iter
         self.ci_level = ci_level
         self.min_target_nonnan = min_target_nonnan
-        self.results_: Optional[pd.DataFrame] = None
+        self.results_: pd.DataFrame | None = None
 
     # ─────────────────────────────────────────────────────────────────────────
 
@@ -116,8 +115,8 @@ class UnivariateConceptShiftDiagnoser:
         y_s: np.ndarray,
         y_t: np.ndarray,
         schema: list[str],
-        drift_type_v: Optional[list[str]] = None,
-    ) -> "UnivariateConceptShiftDiagnoser":
+        drift_type_v: list[str] | None = None,
+    ) -> UnivariateConceptShiftDiagnoser:
         """
         Ajusta la regresión logística con interacción de cohorte para cada feature.
 
@@ -353,9 +352,9 @@ class UnivariateConceptShiftDiagnoser:
         n_ok = (df["status"] == "ok").sum()
         n_sig = df["significant_BH"].sum()
         n_flip = (df["flip_of_sign"] == True).sum()  # noqa: E712
-        n_events_t = df["n_target_obs"].sum()  # aproximado
+        _n_events_t = df["n_target_obs"].sum()  # aproximado
         lines = [
-            f"UnivariateConceptShiftDiagnoser — summary",
+            "UnivariateConceptShiftDiagnoser — summary",
             f"  Features analysed:         {n_ok}/{n_total} (status='ok')",
             f"  Features q<{self.alpha} (BH):     {n_sig} of {n_ok}",
             f"  Features flip-of-sign:     {n_flip}",

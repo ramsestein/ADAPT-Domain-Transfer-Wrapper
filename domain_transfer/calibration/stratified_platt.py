@@ -1,4 +1,4 @@
-"""
+r"""
 domain_transfer.calibration.stratified_platt
 ==============================================
 StratifiedPlattRecalibrator: recalibración de probabilidades con Platt scaling
@@ -50,7 +50,8 @@ Requiere y_t → vive en calibration/, no en select/.
 from __future__ import annotations
 
 import logging
-from typing import Callable, Literal, Optional, Union
+from collections.abc import Callable
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -90,7 +91,7 @@ class StratifiedPlattRecalibrator:
 
     def __init__(
         self,
-        strategy: Union[StratMethod, Callable] = "score_terciles",
+        strategy: StratMethod | Callable = "score_terciles",
         n_strata: int = 3,
         min_stratum_size: int = 15,
         max_iter: int = 1000,
@@ -118,11 +119,11 @@ class StratifiedPlattRecalibrator:
         self.C = C
 
         # Después del fit
-        self._global_calibrator: Optional[LogisticRegression] = None
-        self._stratum_calibrators: dict[int, Optional[LogisticRegression]] = {}
-        self._stratum_ids: Optional[np.ndarray] = None
+        self._global_calibrator: LogisticRegression | None = None
+        self._stratum_calibrators: dict[int, LogisticRegression | None] = {}
+        self._stratum_ids: np.ndarray | None = None
         self._fitted = False
-        self.calibration_report_: Optional[pd.DataFrame] = None
+        self.calibration_report_: pd.DataFrame | None = None
 
     # ─────────────────────────────────────────────────────────────────────────
 
@@ -130,8 +131,8 @@ class StratifiedPlattRecalibrator:
         self,
         scores: np.ndarray,
         y_target: np.ndarray,
-        covariates: Optional[pd.DataFrame] = None,
-    ) -> "StratifiedPlattRecalibrator":
+        covariates: pd.DataFrame | None = None,
+    ) -> StratifiedPlattRecalibrator:
         """
         Ajusta la recalibración Platt estratificada con leave-one-out.
 
@@ -222,7 +223,7 @@ class StratifiedPlattRecalibrator:
     def _assign_strata(
         self,
         scores: np.ndarray,
-        covariates: Optional[pd.DataFrame],
+        covariates: pd.DataFrame | None,
     ) -> np.ndarray:
         """Asigna cada observación a un estrato (int 0..n_strata-1)."""
         strategy = self.strategy
@@ -323,7 +324,7 @@ class StratifiedPlattRecalibrator:
     def predict_proba(
         self,
         scores: np.ndarray,
-        covariates: Optional[pd.DataFrame] = None,
+        covariates: pd.DataFrame | None = None,
     ) -> np.ndarray:
         """
         Recalibra los scores usando el calibrador del estrato correspondiente.
@@ -371,7 +372,7 @@ class StratifiedPlattRecalibrator:
         self,
         scores: np.ndarray,
         y_target: np.ndarray,
-        covariates: Optional[pd.DataFrame] = None,
+        covariates: pd.DataFrame | None = None,
         n_bins: int = 10,
     ) -> float:
         """ECE global tras recalibrar."""

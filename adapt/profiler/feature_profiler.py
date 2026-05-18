@@ -17,19 +17,16 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional
 
 import numpy as np
-import pandas as pd
-from sklearn.linear_model import Lasso, LogisticRegression
+from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
-from domain_transfer.select.combined_score import CombinedScoreSelector, _minmax
-from domain_transfer.drift.concept_shift_univariate import UnivariateConceptShiftDiagnoser
-
 from adapt.profiler.base import FeatureProfile
-from adapt.profiler.quadrant import assign_quadrants
 from adapt.profiler.constants import CV_TARGET_NEAR_CONSTANT_THRESHOLD
+from adapt.profiler.quadrant import assign_quadrants
+from domain_transfer.drift.concept_shift_univariate import UnivariateConceptShiftDiagnoser
+from domain_transfer.select.combined_score import CombinedScoreSelector
 
 logger = logging.getLogger(__name__)
 
@@ -176,9 +173,9 @@ def profile_features(
     y_target: np.ndarray,
     model,
     schema: list[str],
-    drift_type_dict: Optional[dict[str, str]] = None,
-    shap_importance_dict: Optional[dict[str, float]] = None,
-    lbase_dict: Optional[dict[str, float]] = None,
+    drift_type_dict: dict[str, str] | None = None,
+    shap_importance_dict: dict[str, float] | None = None,
+    lbase_dict: dict[str, float] | None = None,
 ) -> list[FeatureProfile]:
     """
     Calcula el perfil de cada feature.

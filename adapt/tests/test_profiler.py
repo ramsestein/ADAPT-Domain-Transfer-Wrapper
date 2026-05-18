@@ -9,8 +9,6 @@ Usa datos sintéticos para probar cada subcomponente de forma aislada.
 from __future__ import annotations
 
 import numpy as np
-import pytest
-
 
 # ── Fixtures sintéticas ───────────────────────────────────────────────────────
 
@@ -154,7 +152,7 @@ class TestDriftProfileDataclass:
         )
 
     def test_features_by_quadrant(self):
-        from adapt.profiler.base import DriftProfile, FeatureProfile
+        from adapt.profiler.base import DriftProfile
         f1 = self._make_feature("a", quadrant="A_core")
         f2 = self._make_feature("b", quadrant="D_ponzonous")
         f3 = self._make_feature("c", quadrant="A_core")

@@ -36,7 +36,6 @@ señales de P(X) — ver ``domain_transfer.select.meta_drift``.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -164,10 +163,10 @@ class MetaDriftAnalyzer:
         y_s: np.ndarray,
         y_t: np.ndarray,
         model,
-        schema: Optional[list[str]] = None,
-        shap_importance_s: Optional[np.ndarray] = None,
-        lbase_score_s: Optional[np.ndarray] = None,
-        temporal_domain: Optional[np.ndarray] = None,
+        schema: list[str] | None = None,
+        shap_importance_s: np.ndarray | None = None,
+        lbase_score_s: np.ndarray | None = None,
+        temporal_domain: np.ndarray | None = None,
     ) -> pd.DataFrame:
         """
         Analiza el drift por feature y devuelve un DataFrame diagnóstico.

@@ -14,14 +14,12 @@ de cerrar la figura con plt.close(fig) después de exportarla.
 
 from __future__ import annotations
 
-from typing import Optional
-
-import numpy as np
 import matplotlib
+import numpy as np
+
 matplotlib.use("Agg")   # backend sin GUI (compatible con cualquier entorno)
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.ticker import MaxNLocator
+import matplotlib.pyplot as plt
 
 from adapt.profiler.base import DriftProfile
 
@@ -59,7 +57,7 @@ def figure_quadrant_map(profile: DriftProfile, figsize=(9, 7)) -> plt.Figure:
     shap = np.array([f.shap_importance for f in features])
     lbase = np.array([f.lbase_score for f in features])
     types = [f.drift_type_v for f in features]
-    names = [f.name for f in features]
+    _names = [f.name for f in features]
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -107,7 +105,7 @@ def figure_quadrant_map(profile: DriftProfile, figsize=(9, 7)) -> plt.Figure:
 def figure_calibration_curve(
     y_true: np.ndarray,
     scores_before: np.ndarray,
-    scores_after: Optional[np.ndarray] = None,
+    scores_after: np.ndarray | None = None,
     n_bins: int = 10,
     figsize=(7, 6),
 ) -> plt.Figure:
@@ -175,7 +173,7 @@ def figure_combined_score_bar(
 
     fig, ax = plt.subplots(figsize=figsize)
     y_pos = np.arange(len(names))
-    bars = ax.barh(y_pos, scores, color=colors, alpha=0.85)
+    _bars = ax.barh(y_pos, scores, color=colors, alpha=0.85)
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels(names, fontsize=8)

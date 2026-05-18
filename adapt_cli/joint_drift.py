@@ -23,7 +23,7 @@ Thresholds (configurable via parameters, defaults match config_schema defaults):
 from __future__ import annotations
 
 import logging
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd

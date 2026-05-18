@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from domain_transfer.align.base import Aligner, _restore_nan
+from domain_transfer.align.base import Aligner
 
 
 class SelectiveAligner(Aligner):
@@ -63,7 +63,7 @@ class SelectiveAligner(Aligner):
         self.feature_indices = np.asarray(feature_indices, dtype=int)
         self._fitted = False
 
-    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> "SelectiveAligner":
+    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> SelectiveAligner:
         """
         Fit the inner aligner on the selected feature columns only.
         """

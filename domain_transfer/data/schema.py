@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SCHEMA_PATH = Path(__file__).resolve().parents[2] / "inputs" / "feature_schema.json"
 
 
-def load_schema(path: Optional[Path] = None) -> list[str]:
+def load_schema(path: Path | None = None) -> list[str]:
     """
     Load the ordered feature schema from a JSON file.
 

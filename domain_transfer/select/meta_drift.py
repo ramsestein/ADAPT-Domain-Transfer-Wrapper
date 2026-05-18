@@ -52,14 +52,12 @@ Workflow de inferencia (sin y_t)
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 from scipy.stats import ks_2samp, wasserstein_distance
-from scipy.stats import skew as scipy_skew
 from scipy.stats import kurtosis as scipy_kurtosis
+from scipy.stats import skew as scipy_skew
 from sklearn.metrics import roc_auc_score
 
 logger = logging.getLogger(__name__)
@@ -87,9 +85,9 @@ DRIFT_FEATURE_COLS = [
 def compute_drift_features(
     X_s: np.ndarray,
     X_t: np.ndarray,
-    shap_importance_s: Optional[np.ndarray] = None,
-    lbase_score_s: Optional[np.ndarray] = None,
-    temporal_domain: Optional[np.ndarray] = None,
+    shap_importance_s: np.ndarray | None = None,
+    lbase_score_s: np.ndarray | None = None,
+    temporal_domain: np.ndarray | None = None,
 ) -> pd.DataFrame:
     """
     Calcula el vector de drift features para cada feature j.
@@ -117,7 +115,7 @@ def compute_drift_features(
     pd.DataFrame, shape (p, len(DRIFT_FEATURE_COLS))
     """
     n_s, p = X_s.shape
-    n_t = X_t.shape[0]
+    _n_t = X_t.shape[0]
     assert X_t.shape[1] == p, "X_s and X_t must have the same number of features."
 
     if shap_importance_s is None:
@@ -191,7 +189,7 @@ def compute_drift_features(
 def _simulate_pseudo_target(
     X_s: np.ndarray,
     rng: np.random.Generator,
-    nan_rate_t: Optional[np.ndarray] = None,
+    nan_rate_t: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Genera un pseudo-target a partir de X_s aplicando perturbaciones realistas.
@@ -368,11 +366,11 @@ class MetaDriftPredictor:
         X_s: np.ndarray,
         y_s: np.ndarray,
         model,
-        nan_rate_t: Optional[np.ndarray] = None,
-        shap_importance_s: Optional[np.ndarray] = None,
-        lbase_score_s: Optional[np.ndarray] = None,
-        temporal_domain: Optional[np.ndarray] = None,
-    ) -> "MetaDriftPredictor":
+        nan_rate_t: np.ndarray | None = None,
+        shap_importance_s: np.ndarray | None = None,
+        lbase_score_s: np.ndarray | None = None,
+        temporal_domain: np.ndarray | None = None,
+    ) -> MetaDriftPredictor:
         """
         Entrena el meta-regresor con K simulaciones sintéticas sobre source.
 
@@ -438,9 +436,9 @@ class MetaDriftPredictor:
         self,
         X_s: np.ndarray,
         X_t: np.ndarray,
-        shap_importance_s: Optional[np.ndarray] = None,
-        lbase_score_s: Optional[np.ndarray] = None,
-        temporal_domain: Optional[np.ndarray] = None,
+        shap_importance_s: np.ndarray | None = None,
+        lbase_score_s: np.ndarray | None = None,
+        temporal_domain: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Predice d_j = ΔAUROC esperado al conservar (no enmascarar) feature j.

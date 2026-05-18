@@ -19,8 +19,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from copy import copy
-from typing import Optional
 
 import numpy as np
 from sklearn.metrics import (
@@ -110,13 +108,13 @@ def cross_validate_adapt(
     pair: CohortPair,
     model,
     schema: list[str],
-    drift_type_dict: Optional[dict] = None,
-    shap_dict: Optional[dict] = None,
-    lbase_dict: Optional[dict] = None,
+    drift_type_dict: dict | None = None,
+    shap_dict: dict | None = None,
+    lbase_dict: dict | None = None,
     n_splits: int = 5,
     pca_k: int = 5,
     max_n_sweep: int = 30,
-    apply_qt_override: Optional[bool] = None,
+    apply_qt_override: bool | None = None,
     random_state: int = 42,
     verbose: bool = True,
 ) -> dict:

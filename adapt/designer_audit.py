@@ -15,8 +15,8 @@ El DesignerAuditTrail acumula todas las decisiones y se puede serializar.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, asdict
-from typing import Any, Optional
+from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -24,7 +24,7 @@ class AlternativeChoice:
     """Una alternativa evaluada durante la selección."""
     choice: Any
     metric_name: str
-    metric_value: Optional[float]
+    metric_value: float | None
     selected: bool
 
     def to_dict(self) -> dict:
@@ -102,7 +102,7 @@ class DesignerAuditTrail:
     def decisions(self) -> list[DesignerDecision]:
         return list(self._decisions)
 
-    def get(self, step: str) -> Optional[DesignerDecision]:
+    def get(self, step: str) -> DesignerDecision | None:
         """Devuelve la primera decisión con el step dado, o None."""
         for d in self._decisions:
             if d.step == step:

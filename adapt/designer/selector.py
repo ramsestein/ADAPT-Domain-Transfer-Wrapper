@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import logging
 
-from adapt.profiler.base import DriftProfile
-from adapt.designer.base import AdapterConfig
 from adapt.designer import rules
+from adapt.designer.base import AdapterConfig
 from adapt.designer_audit import (
+    AlternativeChoice,
     DesignerAuditTrail,
     DesignerDecision,
-    AlternativeChoice,
 )
+from adapt.profiler.base import DriftProfile
 
 logger = logging.getLogger(__name__)
 

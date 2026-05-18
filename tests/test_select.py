@@ -12,7 +12,6 @@ from domain_transfer.align.identity import IdentityAligner
 from domain_transfer.align.pca_coral import PCACoralAligner
 from domain_transfer.align.selective import SelectiveAligner
 
-
 # ── IdentityAligner ───────────────────────────────────────────────────────────
 
 class TestIdentityAligner:
@@ -149,8 +148,9 @@ class TestOTAligner:
         La distancia Wasserstein-1 por feature se mide con scipy antes y
         después de alinear; se exige una reducción de al menos la mitad.
         """
-        from domain_transfer.align.optimal_transport import OTAligner
         from scipy.stats import wasserstein_distance
+
+        from domain_transfer.align.optimal_transport import OTAligner
 
         rng = np.random.default_rng(0)
         p = 5

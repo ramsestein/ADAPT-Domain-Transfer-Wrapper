@@ -32,7 +32,7 @@ Uso típico
 
 from __future__ import annotations
 
-from typing import Sequence, Type
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
@@ -45,7 +45,7 @@ def sweep_mask_n(
     scores: np.ndarray,
     schema: list[str],
     n_range: Sequence[int] = range(0, 21),
-    aligner_cls: Type | None = None,
+    aligner_cls: type | None = None,
     aligner_kwargs: dict | None = None,
     criterion: str = "max_aligned",
 ) -> tuple[pd.DataFrame, int]:

@@ -28,8 +28,6 @@ import joblib
 import numpy as np
 
 from adapt.pipeline.auto_adapter import AutoAdapter
-from domain_transfer.data.pairing import CohortPair
-
 from adapt_cli.config_schema import FullConfig, load_config
 from adapt_cli.cross_validate import (
     _bootstrap_auroc_ci,
@@ -38,6 +36,7 @@ from adapt_cli.cross_validate import (
 )
 from adapt_cli.data_loader import GenericCohortLoader, load_schema_from_file
 from adapt_cli.model_loader import load_model
+from domain_transfer.data.pairing import CohortPair
 
 logging.basicConfig(
     level=logging.INFO,
@@ -148,7 +147,7 @@ class AdaptedModelWrapper:
         logger.info("Wrapper saved to %s", path)
 
     @staticmethod
-    def load(path: str | Path) -> "AdaptedModelWrapper":
+    def load(path: str | Path) -> AdaptedModelWrapper:
         return joblib.load(path)
 
 
@@ -219,7 +218,8 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
     tgt = GenericCohortLoader(cfg.target.path, schema, cfg.target.outcome_col,
                               cfg.target.label_positive_value,
                               unit_corrections=cfg.target.unit_corrections)
-    src.load(); tgt.load()  # eager
+    src.load()
+    tgt.load()  # eager
     print(f"  Source ({cfg.output.source_name}): {src.metadata()}")
     print(f"  Target ({cfg.output.target_name}): {tgt.metadata()}")
 
@@ -294,14 +294,15 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
     aa.profile(pair_filt)
 
     # ── Joint drift (covariance structure) ───────────────────────────────────
-    joint_drift_dict: Optional[dict] = None
+    joint_drift_dict: dict | None = None
     try:
+        from sklearn.covariance import LedoitWolf
+
         from adapt_cli.joint_drift import (
-            joint_drift_report,
             compute_condition_number,
             compute_effective_rank,
+            joint_drift_report,
         )
-        from sklearn.covariance import LedoitWolf
 
         # Impute NaN with source column means before computing VIF
         src_means = np.nanmean(pair_filt.X_s, axis=0)
@@ -402,7 +403,7 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
         logger.warning("Adapted bootstrap CI failed: %s", _e)
 
     # ── Statistical significance tests (DeLong + bootstrap z-test) ───────────
-    significance_tests: Optional[dict] = None
+    significance_tests: dict | None = None
     try:
         z_dl, p_dl, auc_ada, auc_raw = _delong_roc_test(
             pair_filt.y_t, scores_adapted, scores_raw
@@ -410,7 +411,7 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
         n_tests = 2  # adapted_vs_raw + adapted_vs_source
         p_dl_corr = min(1.0, p_dl * n_tests) if p_dl == p_dl else float("nan")
 
-        sig_vs_source: Optional[dict] = None
+        sig_vs_source: dict | None = None
         if m_source is not None and lo_ada is not None:
             lo_src = m_source.get("auroc_ci_lo")
             hi_src = m_source.get("auroc_ci_hi")
@@ -432,9 +433,11 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
                         "p_bonferroni": min(1.0, p_src * n_tests),
                         "ci_source": [lo_src, hi_src],
                         "ci_adapted": [lo_ada, hi_ada],
-                        "note": "Independent samples (source n=%d vs target n=%d); "
-                                "SE approximated from bootstrap 95%% CI."
-                                % (len(pair_filt.y_s), len(pair_filt.y_t)),
+                        "note": (
+                            f"Independent samples (source n={len(pair_filt.y_s)}"
+                            f" vs target n={len(pair_filt.y_t)}); "
+                            "SE approximated from bootstrap 95% CI."
+                        ),
                     }
 
         significance_tests = {
@@ -499,7 +502,7 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
         print(f"    P/R/F1   : {oof['precision']:.3f} / {oof['recall']:.3f} / {oof['f1']:.3f}")
 
         gap = m_adapted["auroc"] - oof["auroc"]
-        print(f"\n  ── Optimism ──")
+        print("\n  ── Optimism ──")
         print(f"    in-sample AUROC: {m_adapted['auroc']:.4f}")
         print(f"    OOF AUROC      : {oof['auroc']:.4f}")
         print(f"    gap (overfit)  : {gap:+.4f}")
@@ -617,8 +620,9 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
 
         # Audit YAML
         try:
-            from adapt_cli.audit_serializer import serialize_run_audit
             import dataclasses
+
+            from adapt_cli.audit_serializer import serialize_run_audit
             config_dict = dataclasses.asdict(cfg) if hasattr(cfg, "__dataclass_fields__") else {}
             audit_doc = serialize_run_audit(
                 schema=schema,
@@ -646,7 +650,7 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
 
             # Build a compact VIF summary from the joint-drift step so that the
             # PCA component selection can be motivated by multicollinearity.
-            vif_summary_for_profiles: Optional[dict] = None
+            vif_summary_for_profiles: dict | None = None
             if joint_drift_dict is not None and "vif_table" in joint_drift_dict:
                 _vt = joint_drift_dict["vif_table"]
                 vif_summary_for_profiles = {
@@ -744,7 +748,8 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
             print(f"  HTML report → {cfg.output.report}")
         except Exception as e:
             logger.warning("Could not generate HTML report: %s", e)
-            import traceback; traceback.print_exc()
+            import traceback
+            traceback.print_exc()
 
     print("\nDone.\n")
     return out

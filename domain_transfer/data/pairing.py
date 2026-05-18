@@ -32,11 +32,9 @@ Key concepts
 from __future__ import annotations
 
 import logging
-from functools import cached_property
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
 
 if TYPE_CHECKING:
     from domain_transfer.align.base import Aligner
@@ -62,7 +60,7 @@ class CohortPair:
         Feature names (shared between both cohorts).
     """
 
-    def __init__(self, source: "CohortLoader", target: "CohortLoader") -> None:
+    def __init__(self, source: CohortLoader, target: CohortLoader) -> None:
         # NOTE(v0.2.0): single-target only.  Multi-target extension point:
         # accept list[CohortLoader] for target; construct one CohortPair per
         # destination inside a MultiCohortPair wrapper.  See OPEN_QUESTIONS OQ-5.
@@ -157,7 +155,7 @@ class CohortPair:
 
     # ── Filtering and masking ─────────────────────────────────────────────────
 
-    def filter_target(self, max_missing_rate: float = 0.5) -> "CohortPair":
+    def filter_target(self, max_missing_rate: float = 0.5) -> CohortPair:
         """
         Return a new CohortPair with only target rows whose per-patient NaN
         rate is below *max_missing_rate*.
@@ -195,7 +193,7 @@ class CohortPair:
         new._p = self._p
         return new
 
-    def mask_features(self, feature_names: list[str]) -> "CohortPair":
+    def mask_features(self, feature_names: list[str]) -> CohortPair:
         """
         Return a new CohortPair where the specified features are set to NaN
         in **both** source and target matrices.
@@ -242,7 +240,7 @@ class CohortPair:
 
     def align(
         self,
-        aligner: "Aligner",
+        aligner: Aligner,
         feature_names: list[str] | None = None,
     ) -> np.ndarray:
         """
@@ -326,8 +324,8 @@ class CohortPair:
 
     def summary(self) -> dict:
         """Return a dict summarising both cohorts and their missingness."""
-        nan_rate_s = np.isnan(self._X_s).mean(axis=0)
-        nan_rate_t = np.isnan(self._X_t).mean(axis=0)
+        _nan_rate_s = np.isnan(self._X_s).mean(axis=0)
+        _nan_rate_t = np.isnan(self._X_t).mean(axis=0)
         return {
             "source": {
                 "n": len(self._X_s),

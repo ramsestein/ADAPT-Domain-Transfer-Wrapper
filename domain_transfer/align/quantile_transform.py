@@ -44,7 +44,7 @@ Para combinar con SelectiveAligner:
 from __future__ import annotations
 
 import logging
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from sklearn.preprocessing import QuantileTransformer
@@ -83,7 +83,7 @@ class QuantileTransformAligner(Aligner):
     def __init__(
         self,
         output_distribution: Literal["uniform", "normal"] = "uniform",
-        n_quantiles: Optional[int] = None,
+        n_quantiles: int | None = None,
         subsample: int = 100_000,
         random_state: int = 42,
     ) -> None:
@@ -101,7 +101,7 @@ class QuantileTransformAligner(Aligner):
         self,
         X_source: np.ndarray,
         X_target: np.ndarray,
-    ) -> "QuantileTransformAligner":
+    ) -> QuantileTransformAligner:
         """
         Ajusta un QuantileTransformer por feature sobre la distribución source.
 

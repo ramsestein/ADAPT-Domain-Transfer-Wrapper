@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional
 
 import numpy as np
 from sklearn.metrics import roc_auc_score
@@ -73,7 +72,7 @@ def _delong_auroc_variance(y_true: np.ndarray, scores: np.ndarray) -> float:
     Vx = indicators.mean(axis=1)  # (n1,)  — media sobre neg para cada pos
     Vy = indicators.mean(axis=0)  # (n0,)  — media sobre pos para cada neg
 
-    auroc = float(np.mean(Vx))
+    _auroc = float(np.mean(Vx))
 
     # Varianza de DeLong
     var = (
@@ -241,7 +240,7 @@ def fit_target_oracle(
     X_target: np.ndarray,
     y_target: np.ndarray,
     source_model=None,
-    model_family: Optional[str] = None,
+    model_family: str | None = None,
     cv: int = 5,
     alpha: float = 0.05,
     random_state: int = 42,

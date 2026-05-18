@@ -11,8 +11,8 @@ import logging
 import warnings
 
 import numpy as np
-from scipy.stats import fisher_exact
 from scipy.special import logit
+from scipy.stats import fisher_exact
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score

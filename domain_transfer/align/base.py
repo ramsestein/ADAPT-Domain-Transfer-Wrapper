@@ -34,7 +34,7 @@ class Aligner(ABC):
     """
 
     @abstractmethod
-    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> "Aligner":
+    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> Aligner:
         """
         Estimate alignment parameters from source and target distributions.
 

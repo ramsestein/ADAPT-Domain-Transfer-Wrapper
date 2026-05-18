@@ -41,7 +41,6 @@ and ``w_alignment_eval.py``'s PCA-CORAL block with the same seed and k.
 from __future__ import annotations
 
 import logging
-from typing import Union
 
 import numpy as np
 from sklearn.decomposition import PCA
@@ -86,7 +85,7 @@ class PCACoralAligner(Aligner):
         k: int = 5,
         reg_pca: float = 1e-6,
         random_state: int = 42,
-        shrinkage: Union[str, float, None] = "auto",
+        shrinkage: str | float | None = "auto",
     ) -> None:
         self.k = k
         self.reg_pca = reg_pca
@@ -142,7 +141,7 @@ class PCACoralAligner(Aligner):
         cov = S + self.reg_pca * np.eye(k)
         return cov, None
 
-    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> "PCACoralAligner":
+    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> PCACoralAligner:
         """
         Standardise by source stats, fit PCA on source, CORAL in latent space.
 

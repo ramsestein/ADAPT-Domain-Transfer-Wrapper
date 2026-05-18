@@ -13,25 +13,23 @@ IMPORTANTE: No añadir reglas sin justificación en el docstring.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 
 from adapt.profiler.base import DriftProfile
 from adapt.profiler.constants import (
-    N_EVENTS_MINIMUM_MASK,
+    CALIBRATION_HETEROGENEITY_PVALUE,
+    CALIBRATION_SLOPE_RECAL_THRESHOLD,
+    CV_TARGET_QT_MINIMUM,
+    N_EVENTS_ISOTONIC,
     N_EVENTS_MINIMUM_CALIBRATION,
+    N_EVENTS_MINIMUM_MASK,
     N_EVENTS_MINIMUM_WOE,
     N_EVENTS_SOURCE_MINIMUM_WOE,
-    N_EVENTS_ISOTONIC,
-    CALIBRATION_SLOPE_RECAL_THRESHOLD,
-    CALIBRATION_HETEROGENEITY_PVALUE,
+    PCA_CORAL_K_RANGE_MIN,
+    SHAP_WOE_MINIMUM,
     VAR_RATIO_QT_LOWER,
     VAR_RATIO_QT_UPPER,
-    CV_TARGET_QT_MINIMUM,
-    SHAP_WOE_MINIMUM,
-    PCA_CORAL_MAX_K_FACTOR,
-    PCA_CORAL_K_RANGE_MIN,
 )
 
 logger = logging.getLogger(__name__)
@@ -113,7 +111,9 @@ def _sweep_mask_n(
     sweep_history : list[dict]  — [{n, auroc}, ...] para todos los N probados
     """
     import warnings
+
     from sklearn.metrics import roc_auc_score
+
     from domain_transfer.align.pca_coral import PCACoralAligner
 
     feat_names = [f.name for f in sorted_features]

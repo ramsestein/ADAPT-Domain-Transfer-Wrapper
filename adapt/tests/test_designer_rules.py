@@ -9,16 +9,14 @@ Prueba cada regla de forma aislada con perfiles sintéticos.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from adapt.profiler.base import DriftProfile, FeatureProfile
 from adapt.profiler.constants import (
+    CALIBRATION_SLOPE_RECAL_THRESHOLD,
+    N_EVENTS_MINIMUM_CALIBRATION,
     N_EVENTS_MINIMUM_MASK,
     N_EVENTS_MINIMUM_WOE,
-    N_EVENTS_MINIMUM_CALIBRATION,
-    CALIBRATION_SLOPE_RECAL_THRESHOLD,
 )
-
 
 # ── Helper ────────────────────────────────────────────────────────────────────
 
@@ -306,8 +304,8 @@ class TestCalibrationRule:
 class TestComponentSelector:
 
     def test_select_returns_adapter_config(self):
-        from adapt.designer.selector import ComponentSelector
         from adapt.designer.base import AdapterConfig
+        from adapt.designer.selector import ComponentSelector
         selector = ComponentSelector()
         profile = _make_profile()
         config = selector.select(profile)

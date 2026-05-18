@@ -12,8 +12,6 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -34,7 +32,7 @@ class CohortLoader(ABC):
     def __init__(self, schema: list[str], label_col: str = "label") -> None:
         self._schema = schema
         self._label_col = label_col
-        self._df: Optional[pd.DataFrame] = None
+        self._df: pd.DataFrame | None = None
 
     # ── Abstract interface ────────────────────────────────────────────────────
 

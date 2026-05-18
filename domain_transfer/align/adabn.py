@@ -53,7 +53,7 @@ class AdaBNAligner(Aligner):
         self._mu_t: np.ndarray | None = None
         self._std_t: np.ndarray | None = None
 
-    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> "AdaBNAligner":
+    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> AdaBNAligner:
         """
         Compute per-feature mean and std for source and target.
 

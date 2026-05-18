@@ -30,25 +30,18 @@ from __future__ import annotations
 
 import logging
 import warnings
-from pathlib import Path
-from typing import Optional
 
-import joblib
 import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
 
+from adapt.designer.base import AdapterConfig
+from adapt.designer.selector import ComponentSelector
+from adapt.profiler.base import DriftProfile
+from adapt.profiler.profiler import Profiler
 from domain_transfer.align.pca_coral import PCACoralAligner
 from domain_transfer.align.quantile_transform import QuantileTransformAligner
-from domain_transfer.align.selective import SelectiveAligner
 from domain_transfer.calibration.stratified_platt import StratifiedPlattRecalibrator
-from domain_transfer.select.woe_encoder import WOEEncoder
 from domain_transfer.data.pairing import CohortPair
-
-from adapt.profiler.profiler import Profiler
-from adapt.profiler.base import DriftProfile
-from adapt.designer.selector import ComponentSelector
-from adapt.designer.base import AdapterConfig
+from domain_transfer.select.woe_encoder import WOEEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +75,9 @@ class AutoAdapter:
         self,
         model,
         schema: list[str],
-        drift_type_dict: Optional[dict[str, str]] = None,
-        shap_dict: Optional[dict[str, float]] = None,
-        lbase_dict: Optional[dict[str, float]] = None,
+        drift_type_dict: dict[str, str] | None = None,
+        shap_dict: dict[str, float] | None = None,
+        lbase_dict: dict[str, float] | None = None,
     ) -> None:
         self._model = model
         self._schema = schema
@@ -96,11 +89,11 @@ class AutoAdapter:
         self._selector = ComponentSelector()
 
         # Estado post-fit
-        self._profile: Optional[DriftProfile] = None
-        self._config: Optional[AdapterConfig] = None
-        self._fitted_aligner: Optional[object] = None
-        self._fitted_woe: Optional[WOEEncoder] = None
-        self._fitted_qt: Optional[QuantileTransformAligner] = None
+        self._profile: DriftProfile | None = None
+        self._config: AdapterConfig | None = None
+        self._fitted_aligner: object | None = None
+        self._fitted_woe: WOEEncoder | None = None
+        self._fitted_qt: QuantileTransformAligner | None = None
         self._fitted_calibrator = None
         self._fitted = False
 
@@ -149,7 +142,7 @@ class AutoAdapter:
 
     def design(
         self,
-        pair: Optional[CohortPair] = None,
+        pair: CohortPair | None = None,
         pca_k: int = 5,
         max_n_sweep: int = 30,
     ) -> AdapterConfig:
@@ -184,7 +177,7 @@ class AutoAdapter:
         )
         return self._config
 
-    def fit(self, pair: CohortPair) -> "AutoAdapter":
+    def fit(self, pair: CohortPair) -> AutoAdapter:
         """
         Ajusta todos los componentes de la pipeline sobre el par.
 
@@ -393,7 +386,7 @@ class AutoAdapter:
 
         X_s_qt = pair.X_s_imp[:, qt_idx_corr]
         X_t_qt = pair.X_t_imp[:, qt_idx_corr]
-        nan_mask_t = pair.nan_mask_t[:, qt_idx_corr]
+        _nan_mask_t = pair.nan_mask_t[:, qt_idx_corr]
         aligner = QuantileTransformAligner(output_distribution=output_distribution)
         aligner.fit(X_s_qt, X_t_qt)
         logger.info("  QT aligner fitted (%d features).", len(qt_idx_corr))
@@ -426,7 +419,7 @@ class AutoAdapter:
         y_source: np.ndarray,
         X_target: np.ndarray,
         y_target: np.ndarray,
-    ) -> "DriftProfile":
+    ) -> DriftProfile:
         """
         Ejecuta el Profiler directamente sobre arrays numpy (sin CohortPair).
 
@@ -466,7 +459,7 @@ class AutoAdapter:
         X_t_imp = np.nan_to_num(X_t_imp, nan=0.0)
 
         p = X_target.shape[1]
-        idx_corr = list(range(p))  # sin 100% NaN en sintético
+        _idx_corr = list(range(p))  # sin 100% NaN en sintético
         nan_mask_t = np.zeros_like(X_target, dtype=bool)
 
         # Paso WOE (skip en arrays sintéticos — no hay y_source de calidad)
@@ -503,18 +496,18 @@ class AutoAdapter:
     # ── Propiedades de estado ─────────────────────────────────────────────────
 
     @property
-    def profile_(self) -> Optional[DriftProfile]:
+    def profile_(self) -> DriftProfile | None:
         """DriftProfile calculado por .profile()."""
         return self._profile
 
     @property
-    def config_(self) -> Optional[AdapterConfig]:
+    def config_(self) -> AdapterConfig | None:
         """AdapterConfig seleccionado por .design()."""
         return self._config
 
     # ── Feature log ──────────────────────────────────────────────────────────
 
-    def _build_feature_log(self, pair_pre_mask: "CohortPair", pair_post_mask: "CohortPair") -> dict:
+    def _build_feature_log(self, pair_pre_mask: CohortPair, pair_post_mask: CohortPair) -> dict:
         """
         Construye el log por feature con estadísticas de distribución pre/post
         alineamiento y estadístico KS.
@@ -523,7 +516,6 @@ class AutoAdapter:
         alignment_method, post_align_dist_summary, ks_stat_pre, ks_stat_post}}.
         """
         from scipy.stats import ks_2samp
-        import warnings
 
         config = self._config
         if config is None:
@@ -668,11 +660,9 @@ def _fit_platt_loo(scores: np.ndarray, y: np.ndarray) -> _PlattLOOCalibrator:
 
     Equivalente a calibration.stratified_platt pero en modo global.
     """
-    from sklearn.model_selection import LeaveOneOut
     from sklearn.linear_model import LogisticRegression as LR
-    import warnings
 
-    n = len(scores)
+    _n = len(scores)
     # Ajustar en todos los datos (usamos regresión logística con logit input)
     eps = 1e-7
     logit_scores = np.log(np.clip(scores, eps, 1 - eps) / (1 - np.clip(scores, eps, 1 - eps)))

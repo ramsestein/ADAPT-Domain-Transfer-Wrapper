@@ -31,7 +31,6 @@ domain adaptation. ECCV Workshops. https://arxiv.org/abs/1612.01939
 from __future__ import annotations
 
 import logging
-from typing import Union
 
 import numpy as np
 
@@ -70,7 +69,7 @@ class CoralAligner(Aligner):
     def __init__(
         self,
         reg: float = 1e-4,
-        shrinkage: Union[str, float, None] = "auto",
+        shrinkage: str | float | None = "auto",
     ) -> None:
         self.reg = reg
         self.shrinkage = shrinkage
@@ -131,7 +130,7 @@ class CoralAligner(Aligner):
         cov = S + self.reg * np.eye(q)
         return cov, None
 
-    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> "CoralAligner":
+    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> CoralAligner:
         """
         Estimate covariance matrices and compute alignment matrix A.
 

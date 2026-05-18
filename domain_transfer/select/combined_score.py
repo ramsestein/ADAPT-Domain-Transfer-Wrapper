@@ -55,7 +55,7 @@ class CombinedScoreSelector:
         lbase_scores: np.ndarray,
         shap_importance: np.ndarray,
         meta_drift_scores: np.ndarray | None = None,
-    ) -> "CombinedScoreSelector":
+    ) -> CombinedScoreSelector:
         """
         Calcula el score combinado y selecciona las N peores features.
 

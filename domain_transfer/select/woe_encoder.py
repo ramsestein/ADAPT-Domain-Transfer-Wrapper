@@ -41,10 +41,8 @@ Thomas, L. C. (2009). Consumer Credit Models. Oxford University Press.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
-import pandas as pd
 
 from domain_transfer.align.base import Aligner, _restore_nan
 
@@ -80,7 +78,7 @@ class WOEEncoder(Aligner):
         self,
         n_bins: int = 10,
         smoothing: float = 0.5,
-        nan_woe: Optional[float] = None,
+        nan_woe: float | None = None,
     ) -> None:
         if n_bins < 2:
             raise ValueError(f"n_bins debe ser ≥ 2; recibido: {n_bins}")
@@ -105,8 +103,8 @@ class WOEEncoder(Aligner):
         self,
         X_source: np.ndarray,
         X_target: np.ndarray,
-        y_source: Optional[np.ndarray] = None,
-    ) -> "WOEEncoder":
+        y_source: np.ndarray | None = None,
+    ) -> WOEEncoder:
         """
         Ajusta los bins y WoE sobre la distribución source.
 
@@ -144,7 +142,7 @@ class WOEEncoder(Aligner):
         X_source: np.ndarray,
         X_target: np.ndarray,
         y_source: np.ndarray,
-    ) -> "WOEEncoder":
+    ) -> WOEEncoder:
         """
         Ajusta los bins y WoE con labels source explícitos.
 
@@ -179,7 +177,7 @@ class WOEEncoder(Aligner):
 
             # WoE global: basado en toda la feature (para fallback)
             global_woe = float(
-                np.log((n_pos_total / n_neg_total))
+                np.log(n_pos_total / n_neg_total)
             )  # simplificado; no usamos aquí la corrección
             self._global_woe.append(global_woe)
 
@@ -288,7 +286,7 @@ class WOEEncoder(Aligner):
         self,
         x_j: np.ndarray,
         j: int,
-        nan_mask_j: Optional[np.ndarray] = None,
+        nan_mask_j: np.ndarray | None = None,
     ) -> np.ndarray:
         """Mapea los valores de x_j a WoE."""
         edges = self._bin_edges[j]
@@ -345,7 +343,7 @@ class WOEEncoder(Aligner):
         X_source: np.ndarray,
         X_target: np.ndarray,
         y_source: np.ndarray,
-    ) -> "WOEEncoder":
+    ) -> WOEEncoder:
         """
         Como fit_supervised, pero también calcula y almacena el IV por feature.
         Útil para selección de features antes de WoE encoding.

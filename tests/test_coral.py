@@ -19,7 +19,6 @@ from domain_transfer.align.base import safe_invsqrtm, safe_sqrtm
 from domain_transfer.align.coral import CoralAligner
 from domain_transfer.align.pca_coral import PCACoralAligner
 
-
 # ── Utilidades de covarianza ──────────────────────────────────────────────────
 
 def frob_cov_dist(A: np.ndarray, B: np.ndarray) -> float:

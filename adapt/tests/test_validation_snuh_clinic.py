@@ -42,10 +42,10 @@ warnings.filterwarnings("ignore")
 @pytest.fixture(scope="module")
 def adapt_data():
     """Carga datos para tests del módulo (pesado, solo una vez)."""
-    from domain_transfer.data.schema import load_schema
-    from domain_transfer.data.snuh import SNUHLoader
     from domain_transfer.data.clinic import ClinicLoader
     from domain_transfer.data.pairing import CohortPair
+    from domain_transfer.data.schema import load_schema
+    from domain_transfer.data.snuh import SNUHLoader
     from domain_transfer.model.xgboost_wrapper import XGBoostWrapper
 
     schema = load_schema()
@@ -86,9 +86,8 @@ def adapt_data():
 def adapt_result(adapt_data):
     """Ejecuta AutoAdapter sobre SNUH→Clínic y devuelve (config, scores, metrics)."""
     from adapt.pipeline.auto_adapter import AutoAdapter
-    from adapt.profiler.global_profiler import (
-        _bootstrap_auroc_from_scores as _bootstrap_auroc, _calibration_slope, _ece_score
-    )
+    from adapt.profiler.global_profiler import _bootstrap_auroc_from_scores as _bootstrap_auroc
+    from adapt.profiler.global_profiler import _calibration_slope, _ece_score
 
     data = adapt_data
     schema = data["schema"]

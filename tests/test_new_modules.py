@@ -13,7 +13,7 @@ import pytest
 
 class TestDesignerAudit:
     def test_record_and_get(self):
-        from adapt.designer_audit import DesignerAuditTrail, DesignerDecision, AlternativeChoice
+        from adapt.designer_audit import AlternativeChoice, DesignerAuditTrail, DesignerDecision
 
         trail = DesignerAuditTrail()
         d = DesignerDecision(
@@ -31,7 +31,7 @@ class TestDesignerAudit:
         assert trail.decisions[0].step == "mask_activate"
 
     def test_to_dict_serializable(self):
-        from adapt.designer_audit import DesignerAuditTrail, DesignerDecision, AlternativeChoice
+        from adapt.designer_audit import AlternativeChoice, DesignerAuditTrail, DesignerDecision
 
         trail = DesignerAuditTrail()
         trail.record(DesignerDecision(
@@ -47,7 +47,8 @@ class TestDesignerAudit:
 
     def test_to_json_roundtrip(self):
         import json
-        from adapt.designer_audit import DesignerAuditTrail, DesignerDecision, AlternativeChoice
+
+        from adapt.designer_audit import DesignerAuditTrail, DesignerDecision
 
         trail = DesignerAuditTrail()
         trail.record(DesignerDecision("s", "c", [], "choice", "just"))

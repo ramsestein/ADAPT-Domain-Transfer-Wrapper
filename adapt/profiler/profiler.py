@@ -18,13 +18,12 @@ results/v/v_drift_decomposition.csv).
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 
 from adapt.profiler.base import DriftProfile
-from adapt.profiler.global_profiler import profile_global
 from adapt.profiler.feature_profiler import profile_features
+from adapt.profiler.global_profiler import profile_global
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +48,9 @@ class Profiler:
         y_target: np.ndarray,
         model,
         schema: list[str],
-        drift_type_dict: Optional[dict[str, str]] = None,
-        shap_importance_dict: Optional[dict[str, float]] = None,
-        lbase_dict: Optional[dict[str, float]] = None,
+        drift_type_dict: dict[str, str] | None = None,
+        shap_importance_dict: dict[str, float] | None = None,
+        lbase_dict: dict[str, float] | None = None,
     ) -> DriftProfile:
         """
         Diagnostica el par y devuelve un DriftProfile.

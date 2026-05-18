@@ -75,7 +75,7 @@ class OTAligner(Aligner):
         self.random_state = random_state
         self._transport = None
 
-    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> "OTAligner":
+    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> OTAligner:
         """
         Fit the Sinkhorn transport plan.
 

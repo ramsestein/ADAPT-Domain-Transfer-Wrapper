@@ -17,7 +17,6 @@ AUROC: atol=1e-3  (los decimales publicados tienen 4 dígitos)
 
 from __future__ import annotations
 
-import numpy as np
 import pytest
 from sklearn.metrics import roc_auc_score
 
@@ -28,10 +27,10 @@ pytestmark = pytest.mark.slow
 
 def _load_pipeline():
     """Carga loaders, model y pair con los parámetros exactos del script x_eval.py."""
-    from domain_transfer.data.schema import load_schema
-    from domain_transfer.data.snuh import SNUHLoader
     from domain_transfer.data.clinic import ClinicLoader
     from domain_transfer.data.pairing import CohortPair
+    from domain_transfer.data.schema import load_schema
+    from domain_transfer.data.snuh import SNUHLoader
     from domain_transfer.model.xgboost_wrapper import XGBoostWrapper
 
     schema = load_schema()

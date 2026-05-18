@@ -34,7 +34,6 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -152,7 +151,7 @@ def compute_drift_decomposition(
     X_t: np.ndarray,
     schema: list[str],
     model,
-    cache_path: Optional[str | Path] = None,
+    cache_path: str | Path | None = None,
     verbose: bool = True,
 ) -> dict:
     """

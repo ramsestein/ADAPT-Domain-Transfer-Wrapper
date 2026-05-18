@@ -18,8 +18,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from copy import deepcopy
-from typing import Optional
 
 import numpy as np
 from sklearn.metrics import roc_auc_score
@@ -27,7 +25,7 @@ from sklearn.metrics import roc_auc_score
 logger = logging.getLogger(__name__)
 
 
-def _auroc_safe(y_true: np.ndarray, scores: np.ndarray) -> Optional[float]:
+def _auroc_safe(y_true: np.ndarray, scores: np.ndarray) -> float | None:
     """Calcula AUROC con manejo de errores."""
     try:
         return float(roc_auc_score(y_true, scores))
@@ -42,17 +40,17 @@ def _run_pipeline_variant(
     mask_n: int,
     mask_features: list[str],
     pca_k: int,
-    calibration_method: Optional[str],
+    calibration_method: str | None,
     apply_pca_coral: bool,
     apply_calibration: bool,
     base_adapter,
-) -> Optional[float]:
+) -> float | None:
     """
     Ejecuta una variante de la pipeline con parámetros específicos.
     Reutiliza el perfil del adapter base (no re-perfila).
     """
-    from adapt.pipeline.auto_adapter import AutoAdapter
     from adapt.designer.base import AdapterConfig
+    from adapt.pipeline.auto_adapter import AutoAdapter
 
     config_variant = AdapterConfig()
     config_variant.apply_mask = mask_n > 0

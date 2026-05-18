@@ -10,10 +10,9 @@ Estas son pruebas de coherencia del Designer, no de rendimiento.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from adapt.profiler.base import DriftProfile, FeatureProfile
 from adapt.designer.selector import ComponentSelector
+from adapt.profiler.base import DriftProfile, FeatureProfile
 
 
 def _make_profile_with_events(n_target_events: int) -> DriftProfile:

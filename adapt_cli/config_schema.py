@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Union
 
 import yaml
 
@@ -30,15 +29,15 @@ import yaml
 @dataclass
 class ModelConfig:
     path: str
-    type: Optional[str] = None              # auto-detect por extensión
-    custom_loader: Optional[str] = None     # ruta a .py BYOM
+    type: str | None = None              # auto-detect por extensión
+    custom_loader: str | None = None     # ruta a .py BYOM
 
 
 @dataclass
 class DatasetConfig:
     path: str
     outcome_col: str
-    schema: Optional[str] = None            # path a JSON/TXT con features
+    schema: str | None = None            # path a JSON/TXT con features
     label_positive_value: object = 1
     unit_corrections: dict = field(default_factory=dict)  # {feature: "div10"|"mul2"|"abs"|float}
 
@@ -50,7 +49,7 @@ class AdaptConfig:
     apply_qt: bool = True                   # True | False
     apply_woe: str = "auto"                 # "auto" | True | False
     max_missing_rate: float = 0.5
-    drift_csv: Optional[str] = None         # CSV precomputado con drift_type, shap_importance_main_model, L_base
+    drift_csv: str | None = None         # CSV precomputado con drift_type, shap_importance_main_model, L_base
 
 
 @dataclass
@@ -64,8 +63,8 @@ class OverfittingConfig:
 @dataclass
 class OutputConfig:
     report: str = "outputs/reports/adapt_report.html"
-    adapted_model: Optional[str] = "outputs/adapted_models/adapted.joblib"
-    metrics_json: Optional[str] = None
+    adapted_model: str | None = "outputs/adapted_models/adapted.joblib"
+    metrics_json: str | None = None
     source_name: str = "Source"
     target_name: str = "Target"
 
@@ -83,7 +82,7 @@ class JointDriftConfig:
 class RegularizationConfig:
     """Regularisation settings for CORAL, Platt calibration, and WOE."""
     # "auto" | float ∈ [0,1] | None  — forwarded to CoralAligner / PCACoralAligner
-    shrinkage: Union[str, float, None] = "auto"
+    shrinkage: str | float | None = "auto"
     # Inverse of L2 strength for Platt calibration; forwarded to
     # StratifiedPlattRecalibrator(C=...)
     calibration_C: float = 1.0

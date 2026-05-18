@@ -10,7 +10,6 @@ textual de la regla aplicada (clave = nombre del componente).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -86,7 +85,7 @@ class AdapterConfig:
     # Calibración
     apply_calibration: bool = True
     calibration_method: str = "platt_loo"
-    calibration_strata_fn: Optional[str] = None
+    calibration_strata_fn: str | None = None
 
     # Justificaciones
     rationale: dict = field(default_factory=dict)

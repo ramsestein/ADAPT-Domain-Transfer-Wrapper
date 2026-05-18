@@ -12,7 +12,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 class FakeModel:
@@ -39,7 +38,8 @@ def _make_synthetic_cohort_arrays(n_s=300, n_t=60, p=10, seed=0):
     y_s = (X_s[:, 0] + rng.normal(0, 0.3, n_s) > 0).astype(int)
     X_t = rng.normal(1, 1, (n_t, p))  # drift: media desplazada 1
     y_t = (X_t[:, 0] + rng.normal(0, 0.3, n_t) > 1).astype(int)
-    y_t[0] = 1; y_t[1] = 0  # garantizar ambas clases
+    y_t[0] = 1
+    y_t[1] = 0  # garantizar ambas clases
     schema = [f"feat_{j:02d}" for j in range(p)]
     return X_s, y_s, X_t, y_t, schema
 
@@ -57,9 +57,12 @@ class TestAutoAdapterProfile:
 
         # Simular CohortPair-like con solo arrays
         class FakePair:
-            X_s = X_s; y_s = y_s
-            X_t = X_t; y_t = y_t
-            X_s_imp = X_s; X_t_imp = X_t
+            X_s = X_s
+            y_s = y_s
+            X_t = X_t
+            y_t = y_t
+            X_s_imp = X_s
+            X_t_imp = X_t
             mu_s = X_s.mean(axis=0)
             nan_mask_t = np.zeros_like(X_t, dtype=bool)
             idx_corr = list(range(X_t.shape[1]))
@@ -87,8 +90,8 @@ class TestAutoAdapterProfile:
 class TestAutoAdapterDesign:
 
     def test_design_after_profile(self):
-        from adapt.pipeline.auto_adapter import AutoAdapter
         from adapt.designer.base import AdapterConfig
+        from adapt.pipeline.auto_adapter import AutoAdapter
 
         X_s, y_s, X_t, y_t, schema = _make_synthetic_cohort_arrays()
         model = FakeModel(n_features=len(schema))

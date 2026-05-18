@@ -40,7 +40,7 @@ from __future__ import annotations
 import base64
 import io
 import logging
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
@@ -54,7 +54,7 @@ def _select_pca_k(
     X_combined: np.ndarray,
     pca_k_max: int,
     variance_threshold: float,
-    vif_summary: Optional[dict],
+    vif_summary: dict | None,
     random_state: int,
 ) -> tuple[int, str]:
     """
@@ -117,7 +117,7 @@ def analyze_patient_profiles(
     n_clusters: int = 6,
     pca_k_max: int = 50,
     variance_threshold: float = 0.90,
-    vif_summary: Optional[dict] = None,
+    vif_summary: dict | None = None,
     umap_neighbors: int = 15,
     random_state: int = 42,
 ) -> dict:
@@ -155,12 +155,12 @@ def analyze_patient_profiles(
         ``pca_k_rationale``       – human-readable rationale for k selection.
         ``variance_threshold``    – threshold passed in.
     """
-    from sklearn.decomposition import PCA
     from sklearn.cluster import KMeans
+    from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
 
     features = list(features)
-    p = len(features)
+    _p = len(features)
 
     # ── 1. Impute NaN with source column means ───────────────────────────────
     src_means = np.nanmean(X_s, axis=0)
@@ -342,7 +342,8 @@ def _make_umap_figure(
         for c in range(n_clusters)
     ]
     ax.legend(handles=cluster_handles, fontsize=7, loc="best", framealpha=0.7)
-    ax.set_xlabel("UMAP-1"); ax.set_ylabel("UMAP-2")
+    ax.set_xlabel("UMAP-1")
+    ax.set_ylabel("UMAP-2")
     ax.axis("off")
 
     # Right panel: coloured by domain
@@ -361,7 +362,8 @@ def _make_umap_figure(
             label=dom,
         )
     ax.legend(fontsize=9, loc="best", framealpha=0.7)
-    ax.set_xlabel("UMAP-1"); ax.set_ylabel("UMAP-2")
+    ax.set_xlabel("UMAP-1")
+    ax.set_ylabel("UMAP-2")
     ax.axis("off")
 
     plt.tight_layout()

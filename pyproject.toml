@@ -41,7 +41,13 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "N"]
-ignore = ["N803", "N806"]   # allow uppercase variable names (matrices)
+ignore = [
+    "N803", "N806",   # allow uppercase variable names (matrices)
+    "N802",           # allow lowercase/mixed function names (math conventions)
+    "N814", "N815", "N817",  # naming conventions for imported symbols
+    "E741",           # allow l, O, I as variable names (math/stats)
+    "E501",           # line length managed per-file; 100-char limit catches obvious cases
+]
 
 # ── mypy ────────────────────────────────────────────────────────────────────
 [tool.mypy]

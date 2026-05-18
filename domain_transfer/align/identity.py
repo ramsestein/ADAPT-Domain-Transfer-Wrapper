@@ -22,7 +22,7 @@ class IdentityAligner(Aligner):
     the degradation due to dataset shift alone.
     """
 
-    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> "IdentityAligner":
+    def fit(self, X_source: np.ndarray, X_target: np.ndarray) -> IdentityAligner:
         return self
 
     def transform(

@@ -23,8 +23,9 @@ from __future__ import annotations
 
 import importlib.util
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional, Protocol
+from typing import Protocol
 
 import numpy as np
 
@@ -42,7 +43,7 @@ class PredictProbaModel(Protocol):
 class _SklearnLikeWrapper:
     """Envuelve estimadores sklearn-like que retornan (n, 2) y devolvemos col[1]."""
 
-    def __init__(self, model, n_features: Optional[int] = None):
+    def __init__(self, model, n_features: int | None = None):
         self._model = model
         self.n_features_in_ = n_features or getattr(model, "n_features_in_", None)
 
@@ -113,7 +114,7 @@ class _KerasWrapper:
 class _TorchModuleWrapper:
     """Wrapper para módulos PyTorch ya instanciados (no state_dicts sueltos)."""
 
-    def __init__(self, model, n_features: Optional[int] = None):
+    def __init__(self, model, n_features: int | None = None):
         import torch
         self._torch = torch
         self._model = model.eval()
@@ -139,7 +140,7 @@ class _TorchModuleWrapper:
 
 # ── Loaders por formato ───────────────────────────────────────────────────────
 
-def _load_xgboost(path: Path, schema: Optional[list[str]] = None) -> PredictProbaModel:
+def _load_xgboost(path: Path, schema: list[str] | None = None) -> PredictProbaModel:
     """Carga XGBoost JSON/UBJ/BIN.
 
     Si se pasa schema, usa el `XGBoostWrapper` interno (ya probado, exactamente
@@ -255,9 +256,9 @@ _DISPATCH: dict[str, Callable[[Path], PredictProbaModel]] = {
 
 def load_model(
     path: str | Path,
-    model_type: Optional[str] = None,
-    custom_loader: Optional[str | Path] = None,
-    schema: Optional[list[str]] = None,
+    model_type: str | None = None,
+    custom_loader: str | Path | None = None,
+    schema: list[str] | None = None,
 ) -> PredictProbaModel:
     """
     Carga un modelo y devuelve un objeto con .predict_proba(X).

@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional
 
 import numpy as np
 
@@ -76,9 +75,9 @@ def drift_decomposition(
     auroc_raw: float,
     auroc_adapted: float,
     auroc_oracle: float,
-    ci_raw: Optional[tuple] = None,
-    ci_adapted: Optional[tuple] = None,
-    ci_oracle: Optional[tuple] = None,
+    ci_raw: tuple | None = None,
+    ci_adapted: tuple | None = None,
+    ci_oracle: tuple | None = None,
     alpha: float = 0.05,
 ) -> dict:
     """
@@ -107,7 +106,6 @@ def drift_decomposition(
         indeterminate : bool — True si total_gap ≈ 0
         note : str
     """
-    from scipy import stats as scipy_stats  # para z-score
 
     z = float(__import__("scipy").stats.norm.ppf(1 - alpha / 2))
 
@@ -302,8 +300,7 @@ def _attribution_one_feature(
     Devuelve (contribution, auroc_j_off).
     """
     from sklearn.metrics import roc_auc_score
-    from domain_transfer.align.pca_coral import PCACoralAligner
-    from domain_transfer.data.pairing import CohortPair as CP
+
 
     feat2idx = {f: i for i, f in enumerate(schema)}
     feat_idx = feat2idx.get(feature)

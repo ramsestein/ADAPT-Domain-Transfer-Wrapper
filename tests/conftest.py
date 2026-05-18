@@ -12,7 +12,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-
 # ── Seeds y dimensiones ───────────────────────────────────────────────────────
 N_SOURCE = 500   # SNUH sintético
 N_TARGET = 100   # Clínic sintético
