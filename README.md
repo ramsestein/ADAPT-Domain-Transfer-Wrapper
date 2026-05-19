@@ -126,9 +126,11 @@ report — see [docs/USAGE.md](docs/USAGE.md).
 
 | Output | Description |
 |--------|-------------|
-| `outputs/adapted_models/<run_id>.joblib` | Callable wrapper — load with `joblib.load()` and call `.predict_proba(X_target)` for production inference |
-| `outputs/reports/<run_id>.html` | Self-contained HTML report with all sections: drift, attribution, audit trail, calibration decomposition, counterfactuals |
+| `outputs/adapted_models/<run_id>_<ts>.joblib` | Callable wrapper — load with `joblib.load()` and call `.predict_proba(X_target)` for production inference |
+| `outputs/reports/<run_id>_<ts>.html` | Self-contained HTML report with all sections: drift, attribution, audit trail, calibration decomposition, counterfactuals |
 | `outputs/audit/<run_id>.yaml` | SHA-256 hashes of every input, full config, designer decisions, dependency versions — for exact reproducibility |
+
+Output file names include a `_YYYYMMDD_HHMMSS` timestamp by default (`output.timestamp: true` in the config) so that successive runs never overwrite each other.  Set `timestamp: false` for fixed, predictable names.
 
 ---
 
@@ -154,16 +156,17 @@ Full table (including joint drift and Brier decomposition signals) in
 
 ```
 adapt_cli/            Public CLI package
-  ├── model_loader.py     Loads XGB / sklearn / keras / torch / BYOM
-  ├── data_loader.py      CSV/parquet → CohortPair
-  ├── config_schema.py    YAML validation (all parameters documented)
-  ├── cross_validate.py   Honest k-fold (optimism gap)
-  ├── drift_compute.py    Per-feature drift decomposition (six-category taxonomy)
-  ├── joint_drift.py      VIF / condition number / effective rank analysis
-  ├── drift_attribution.py  Recoverable vs irreducible gap with DeLong CIs
-  ├── counterfactuals.py  Alternative config sweep
-  ├── oracle.py           Target oracle (k-fold ceiling)
-  └── run.py              End-to-end orchestrator
+  ├── model_loader.py         Loads XGB / sklearn / keras / torch / BYOM
+  ├── data_loader.py          CSV/parquet → CohortPair
+  ├── config_schema.py        YAML validation (all parameters documented)
+  ├── pipeline_preprocessor.py  Applies *_pipeline.json before schema alignment
+  ├── cross_validate.py       Honest k-fold (optimism gap)
+  ├── drift_compute.py        Per-feature drift decomposition (six-category taxonomy)
+  ├── joint_drift.py          VIF / condition number / effective rank analysis
+  ├── drift_attribution.py    Recoverable vs irreducible gap with DeLong CIs
+  ├── counterfactuals.py      Alternative config sweep
+  ├── oracle.py               Target oracle (k-fold ceiling)
+  └── run.py                  End-to-end orchestrator
 
 adapt/                Internals (profiler, designer, pipeline, reporter)
 domain_transfer/      Alignment algorithms (PCA-CORAL, QT, WOE, calibration)

@@ -42,6 +42,11 @@ documented below.
 model:
   path: inputs/models/your_model.json   # required
   type: xgboost                         # optional: auto-detected from extension
+  # pipeline: inputs/models/your_model_pipeline.json
+  #   Path to a preprocessing pipeline JSON that transforms raw columns into
+  #   the features expected by the model (e.g. PCA + low-VIF selection).
+  #   If omitted, ADAPT auto-detects any *_pipeline.json in the same folder
+  #   as the model.  Set to null to disable auto-detection.
   # custom_loader: path/to/loader.py    # only for BYOM models (see MODEL_FORMAT.md)
 
 # ── Source cohort ───────────────────────────────────────────────────────────
@@ -84,6 +89,9 @@ output:
   metrics_json: outputs/reports/my_run.metrics.json
   source_name: "Source"   # label shown in the report
   target_name: "Target"
+  timestamp: true         # true (default) → appends _YYYYMMDD_HHMMSS to every
+                          # output file stem so concurrent runs never overwrite
+                          # each other.  Set to false for fixed, predictable names.
 
 # ── Joint drift thresholds ──────────────────────────────────────────────────
 # Controls the VIF-based multicollinearity analysis (source cohort only).

@@ -31,6 +31,8 @@ class ModelConfig:
     path: str
     type: str | None = None              # auto-detect por extensión
     custom_loader: str | None = None     # ruta a .py BYOM
+    pipeline: str | None = None          # ruta a _pipeline.json (PCA+feature selection)
+                                         # Si no se especifica, se busca junto al modelo
 
 
 @dataclass
@@ -67,6 +69,7 @@ class OutputConfig:
     metrics_json: str | None = None
     source_name: str = "Source"
     target_name: str = "Target"
+    timestamp: bool = True   # True → añade _YYYYMMDD_HHMMSS al stem de cada fichero
 
 
 @dataclass

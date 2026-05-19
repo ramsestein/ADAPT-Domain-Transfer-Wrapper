@@ -72,6 +72,6 @@ def validate_dataframe(df: pd.DataFrame, schema: list[str], label_col: str = "la
 
 # Features structurally absent in Clínic Barcelona (100% NaN by design —
 # these labs/measurements are not collected in the Clínic protocol).
-STRUCTURALLY_ABSENT_CLINIC: frozenset[str] = frozenset(
-    ["RBC", "Crystalloid", "EBL", "preopEF", "CRP", "preop_bun", "intraop_Na_mean"]
+# NOTE: This set is dynamic — update based on your actual feature schema.
+STRUCTURALLY_ABSENT_CLINIC: frozenset[str] = frozenset()
 )

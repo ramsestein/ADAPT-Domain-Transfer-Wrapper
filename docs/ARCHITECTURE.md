@@ -133,7 +133,7 @@ fit — it does not affect inference at all.
 
 Each run produces four artefacts:
 
-### `outputs/adapted_models/<run_id>.joblib`
+### `outputs/adapted_models/<run_id>_<ts>.joblib`
 
 A serialised `AdaptedModelWrapper` object (via `joblib`).  Calling
 `.predict_proba(X_target)` on it passes rows through the alignment layer,
@@ -141,7 +141,7 @@ through the frozen model, and through the calibration layer in one step.
 This is the only artefact you need for production inference over **new
 data from the same target domain**.
 
-### `outputs/reports/<run_id>.html`
+### `outputs/reports/<run_id>_<ts>.html`
 
 A self-contained HTML file (all CSS and JS inlined, no external dependencies).
 Sections:
@@ -173,6 +173,10 @@ Use this file to reproduce any run exactly (`--audit-replay` flag, planned).
 Per-feature drift decomposition cache (LASSO + XGBoost taxonomy, six
 categories).  Computing it for ~100 features takes 2–3 minutes; subsequent
 runs reuse it instantly.  Delete the file to force recomputation.
+
+> **Note on `<ts>`:** output file stems include a `_YYYYMMDD_HHMMSS` suffix by
+> default (`output.timestamp: true`) so that successive runs never overwrite
+> each other.  Set `timestamp: false` in the config for fixed names.
 
 ---
 

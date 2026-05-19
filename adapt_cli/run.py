@@ -180,9 +180,26 @@ def _apply_overrides(cfg: FullConfig, overrides: list[str]) -> None:
         logger.info("Override: %s = %r", key, new)
 
 
+def _stamp_path(p: str | None, ts: str) -> str | None:
+    """Inserta el timestamp antes de la extensión: foo.html → foo_20260519_120000.html"""
+    if p is None:
+        return None
+    path = Path(p)
+    return str(path.with_stem(f"{path.stem}_{ts}"))
+
+
 def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> dict:
     """Ejecuta el pipeline completo y devuelve un dict de resultados."""
+    import datetime
     out = {}
+
+    # Aplicar timestamp a los paths de salida para evitar sobreescrituras
+    if cfg.output.timestamp:
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        cfg.output.report = _stamp_path(cfg.output.report, ts)
+        cfg.output.adapted_model = _stamp_path(cfg.output.adapted_model, ts)
+        cfg.output.metrics_json = _stamp_path(cfg.output.metrics_json, ts)
+        print(f"  Run timestamp: {ts}")
 
     # 1. Schema (lo cargamos primero para pasarlo al modelo)
     print("\n[1/6] Loading schema…")
@@ -210,14 +227,46 @@ def run(cfg: FullConfig, run_cv: bool = True, skip_expensive: bool = False) -> d
                 len(schema), model.n_features_in_,
             )
 
+    # ── Pipeline preprocessor (auto-detect or explicit) ───────────────────
+    pipeline_preprocessor = None
+    pipeline_path = cfg.model.pipeline  # explicit path from config
+
+    if pipeline_path is None:
+        # Auto-detect: buscar *_pipeline.json junto al modelo
+        model_path = Path(cfg.model.path)
+        candidates = list(model_path.parent.glob("*_pipeline.json"))
+        if len(candidates) == 1:
+            pipeline_path = str(candidates[0])
+        elif len(candidates) > 1:
+            # Preferir el que comparte prefijo con el modelo
+            model_stem = model_path.stem
+            for c in candidates:
+                if c.stem.startswith(model_stem):
+                    pipeline_path = str(c)
+                    break
+            if pipeline_path is None:
+                logger.warning(
+                    "Multiple _pipeline.json found: %s — using none. "
+                    "Set model.pipeline in config to pick one.",
+                    [c.name for c in candidates],
+                )
+
+    if pipeline_path:
+        from adapt_cli.pipeline_preprocessor import PipelinePreprocessor
+        pipeline_preprocessor = PipelinePreprocessor(pipeline_path)
+        print(f"  Pipeline: {pipeline_path} "
+              f"({pipeline_preprocessor.n_features_in} → {pipeline_preprocessor.n_features_out} features)")
+
     # 3. Datos
     print("\n[3/6] Loading datasets…")
     src = GenericCohortLoader(cfg.source.path, schema, cfg.source.outcome_col,
                               cfg.source.label_positive_value,
-                              unit_corrections=cfg.source.unit_corrections)
+                              unit_corrections=cfg.source.unit_corrections,
+                              pipeline_preprocessor=pipeline_preprocessor)
     tgt = GenericCohortLoader(cfg.target.path, schema, cfg.target.outcome_col,
                               cfg.target.label_positive_value,
-                              unit_corrections=cfg.target.unit_corrections)
+                              unit_corrections=cfg.target.unit_corrections,
+                              pipeline_preprocessor=pipeline_preprocessor)
     src.load()
     tgt.load()  # eager
     print(f"  Source ({cfg.output.source_name}): {src.metadata()}")

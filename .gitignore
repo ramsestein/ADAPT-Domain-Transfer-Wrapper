@@ -13,6 +13,7 @@ pip-wheel-metadata/
 
 # ─── Virtual envs ─────────────────────────────────────────────────────────────
 .venv/
+.venv_test/
 venv/
 env/
 ENV/
@@ -46,9 +47,17 @@ inputs/models/
 # Reference datasets (large, do not commit)
 datasets/
 model/
+!domain_transfer/model
 
 # Jupyter
 .ipynb_checkpoints/
 
 # Logs
 *.log
+
+# Docs
+feature_schema.json
+snuh_aki_model.json
+snuh_aki_pipeline.json
+preprocess_data.py
+configs/snuh_model_to_clinic.yaml

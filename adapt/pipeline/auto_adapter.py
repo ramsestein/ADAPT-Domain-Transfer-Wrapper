@@ -366,8 +366,9 @@ class AutoAdapter:
             return None
 
         X_s_woe = pair.X_s_imp[:, woe_idx_corr]
+        X_t_woe = pair.X_t_imp[:, woe_idx_corr]
         encoder = WOEEncoder(n_bins=self._config.woe_n_bins)
-        encoder.fit(X_s_woe, pair.y_s)
+        encoder.fit_supervised(X_s_woe, X_t_woe, pair.y_s)
         logger.info("  WOE encoder fitted (%d features).", len(woe_idx_corr))
         return encoder
 

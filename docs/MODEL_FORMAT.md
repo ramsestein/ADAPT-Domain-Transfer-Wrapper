@@ -236,4 +236,73 @@ When in doubt, wrap the model in a sklearn-compatible class with
 
 ---
 
+## Preprocessing pipeline (`_pipeline.json`)
+
+Some externally-provided models require a fixed preprocessing step before the
+model can receive any features (e.g., cluster-wise PCA + low-VIF feature
+selection).  ADAPT supports this via a companion JSON file called a
+*preprocessing pipeline*.
+
+### Auto-detection
+
+If a file named `*_pipeline.json` exists in the **same directory** as the
+model, ADAPT detects and loads it automatically.  No config change is needed.
+
+```
+inputs/models/
+  my_model.json            ← model
+  my_model_pipeline.json   ← auto-detected preprocessing pipeline
+```
+
+### Explicit config
+
+```yaml
+model:
+  path: inputs/models/my_model.json
+  pipeline: inputs/models/my_model_pipeline.json   # explicit path (overrides auto-detect)
+  # pipeline: null    # set to null to disable auto-detection
+```
+
+### Pipeline JSON format
+
+```json
+{
+  "all_features": ["raw_feat_1", "raw_feat_2", ...],
+  "train_medians": {"raw_feat_1": 1.23, "raw_feat_2": 4.56, ...},
+  "clusters": [
+    {
+      "cluster_id": 1,
+      "features": ["raw_feat_1", "raw_feat_2"],
+      "scaler_mean": [0.1, 0.2],
+      "scaler_std": [1.0, 1.1],
+      "pca_components": [[0.7, 0.7]],
+      "pca_mean": [0.0]
+    }
+  ],
+  "low_vif_vars": ["raw_feat_3", "raw_feat_4"],
+  "feature_names_out": ["C01_PC1", "C02_PC1", "raw_feat_3", "raw_feat_4", ...]
+}
+```
+
+| Key | Description |
+|-----|-------------|
+| `all_features` | All raw input columns the pipeline expects (used for imputation) |
+| `train_medians` | Median per raw feature, used to impute NaN values before PCA |
+| `clusters` | List of feature groups — each produces one PCA component named `C{id:02d}_PC1` |
+| `low_vif_vars` | Raw features passed through without transformation (low VIF, no PCA needed) |
+| `feature_names_out` | Final ordered feature names that the model expects |
+
+### What `PipelinePreprocessor` does
+
+1. Extracts `all_features` columns from the raw DataFrame; imputes NaN → `train_medians`.
+2. For each cluster: z-scores with `scaler_mean`/`scaler_std`, then projects with `pca_components`.  Output column: `C{id:02d}_PC1`.
+3. Extracts `low_vif_vars` columns unchanged.
+4. Concatenates PCA outputs + low-VIF columns and reorders to `feature_names_out`.
+5. Preserves any `label` column if present.
+
+The transform runs **after** `unit_corrections` and **before** schema alignment
+inside `data_loader.py`.
+
+---
+
 *Back to [ARCHITECTURE.md](ARCHITECTURE.md) · [USAGE.md](USAGE.md)*

@@ -31,7 +31,13 @@ logger = logging.getLogger(__name__)
 
 
 class GenericCohortLoader(CohortLoader):
-    """CohortLoader que carga desde CSV o Parquet con un outcome configurable."""
+    """CohortLoader que carga desde CSV o Parquet con un outcome configurable.
+
+    Si se proporciona un ``pipeline_preprocessor``, se aplica al DataFrame
+    **antes** de alinear al schema. Esto permite que el CSV contenga features
+    crudas y el pipeline (PCA + feature selection) las transforme a las
+    features que el modelo espera.
+    """
 
     def __init__(
         self,
@@ -40,12 +46,14 @@ class GenericCohortLoader(CohortLoader):
         outcome_col: str,
         label_positive_value=1,
         unit_corrections: dict | None = None,
+        pipeline_preprocessor=None,
     ) -> None:
         super().__init__(schema=schema, label_col="label")
         self.path = Path(path)
         self.outcome_col = outcome_col
         self.label_positive_value = label_positive_value
         self.unit_corrections = unit_corrections or {}
+        self._pipeline = pipeline_preprocessor
 
     def load(self) -> pd.DataFrame:
         if not self.path.exists():
@@ -68,12 +76,55 @@ class GenericCohortLoader(CohortLoader):
                 f"Disponibles: {list(df.columns)[:20]}..."
             )
 
-        # Normalizar nombres de columnas (quitar sufijos de unidades) si hay solape
+        # ── Normalizar nombres de columnas (quitar sufijos de unidades) ──
+        # Debe ejecutarse antes de unit_corrections y pipeline para que los
+        # nombres de features en la config coincidan con las columnas del CSV.
         if strip_units is not None:
             try:
                 df = strip_units(df, self._schema)
             except Exception:
                 pass
+
+        # ── Unit corrections (apply to raw columns BEFORE pipeline) ───────
+        if self.unit_corrections:
+            for feat, op in self.unit_corrections.items():
+                if feat not in df.columns:
+                    logger.warning("[unit_corrections] feature '%s' not in raw data; ignored", feat)
+                    continue
+                if isinstance(op, str):
+                    op_lc = op.lower()
+                    if op_lc in ("div10", "÷10", "/10"):
+                        df[feat] = pd.to_numeric(df[feat], errors="coerce") / 10.0
+                    elif op_lc in ("mul10", "×10", "*10"):
+                        df[feat] = pd.to_numeric(df[feat], errors="coerce") * 10.0
+                    elif op_lc in ("mul2", "×2", "*2"):
+                        df[feat] = pd.to_numeric(df[feat], errors="coerce") * 2.0
+                    elif op_lc in ("div2", "÷2", "/2"):
+                        df[feat] = pd.to_numeric(df[feat], errors="coerce") / 2.0
+                    elif op_lc == "abs":
+                        df[feat] = pd.to_numeric(df[feat], errors="coerce").abs()
+                    elif op_lc == "neg":
+                        df[feat] = -pd.to_numeric(df[feat], errors="coerce")
+                    else:
+                        logger.warning("[unit_corrections] op '%s' unknown for %s", op, feat)
+                        continue
+                elif isinstance(op, (int, float)):
+                    df[feat] = pd.to_numeric(df[feat], errors="coerce") * float(op)
+                else:
+                    logger.warning("[unit_corrections] invalid value for %s: %r", feat, op)
+                    continue
+                logger.debug("[unit_corrections] %s ← %s", feat, op)
+            logger.info("[%s] %d unit_corrections applied", self.path.name, len(self.unit_corrections))
+
+        # ── Pipeline preprocessing (PCA + feature selection) ──────────────
+        if self._pipeline is not None:
+            logger.info(
+                "[%s] applying pipeline preprocessor (%d → %d features)",
+                self.path.name,
+                self._pipeline.n_features_in,
+                self._pipeline.n_features_out,
+            )
+            df = self._pipeline.transform(df)
 
         # Construir la matriz de features alineada al schema (faltantes → NaN)
         out = pd.DataFrame(index=df.index, columns=self._schema, dtype=float)
@@ -91,38 +142,6 @@ class GenericCohortLoader(CohortLoader):
                 self.path.name, len(missing), len(self._schema),
                 missing[:5], "..." if len(missing) > 5 else "",
             )
-
-        # Aplicar correcciones de unidades configurables
-        if self.unit_corrections:
-            for feat, op in self.unit_corrections.items():
-                if feat not in out.columns:
-                    logger.warning("[unit_corrections] feature '%s' not in schema; ignored", feat)
-                    continue
-                if isinstance(op, str):
-                    op_lc = op.lower()
-                    if op_lc in ("div10", "÷10", "/10"):
-                        out[feat] = out[feat] / 10.0
-                    elif op_lc in ("mul10", "×10", "*10"):
-                        out[feat] = out[feat] * 10.0
-                    elif op_lc in ("mul2", "×2", "*2"):
-                        out[feat] = out[feat] * 2.0
-                    elif op_lc in ("div2", "÷2", "/2"):
-                        out[feat] = out[feat] / 2.0
-                    elif op_lc == "abs":
-                        out[feat] = out[feat].abs()
-                    elif op_lc == "neg":
-                        out[feat] = -out[feat]
-                    else:
-                        logger.warning("[unit_corrections] op '%s' unknown for %s", op, feat)
-                        continue
-                elif isinstance(op, (int, float)):
-                    # Numeric multiplier
-                    out[feat] = out[feat] * float(op)
-                else:
-                    logger.warning("[unit_corrections] invalid value for %s: %r", feat, op)
-                    continue
-                logger.debug("[unit_corrections] %s ← %s", feat, op)
-            logger.info("[%s] %d unit_corrections applied", self.path.name, len(self.unit_corrections))
 
         # Sanitise ±Inf → NaN (common in CSVs with miscalculated ratios)
         n_inf = int(np.isinf(out[self._schema].values).sum())
